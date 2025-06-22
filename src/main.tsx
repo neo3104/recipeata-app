@@ -1,23 +1,66 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
-import { ThemeProvider } from '@mui/material/styles';
-import theme from './theme';
-import { UserProvider } from './contexts/UserContext.tsx';
-import { RecipeProvider } from './contexts/RecipeContext.tsx';
+import ProtectedRoute from './components/ProtectedRoute.tsx';
+import Layout from './components/Layout.tsx';
+import RecipeList from './pages/RecipeList.tsx';
+import Login from './pages/Login.tsx';
+import AddRecipe from './pages/AddRecipe.tsx';
+import RecipeDetail from './pages/RecipeDetail.tsx';
+import EditRecipe from './pages/EditRecipe.tsx';
+import MyPage from './pages/MyPage.tsx';
+
+const router = createBrowserRouter([
+  {
+    element: <App />,
+    children: [
+      {
+        path: 'login',
+        element: <Login />,
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: (
+              <Layout>
+                <Outlet />
+              </Layout>
+            ),
+            children: [
+              {
+                path: '/',
+                index: true,
+                element: <RecipeList />,
+              },
+              {
+                path: 'add',
+                element: <AddRecipe />,
+              },
+              {
+                path: 'recipe/:id',
+                element: <RecipeDetail />,
+              },
+              {
+                path: 'edit/:id',
+                element: <EditRecipe />,
+              },
+              {
+                path: 'mypage',
+                element: <MyPage />,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <BrowserRouter>
-        <UserProvider>
-          <RecipeProvider>
-            <App />
-          </RecipeProvider>
-        </UserProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <RouterProvider router={router} />
   </React.StrictMode>
 );

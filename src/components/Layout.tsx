@@ -1,115 +1,149 @@
-import { Outlet, Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import CssBaseline from '@mui/material/CssBaseline';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Fab from '@mui/material/Fab';
 import AddIcon from '@mui/icons-material/Add';
-import IconButton from '@mui/material/IconButton';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import SettingsIcon from '@mui/icons-material/Settings';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import ArrowBack from '@mui/icons-material/ArrowBack';
-import Notifications from '@mui/icons-material/Notifications';
-import Settings from '@mui/icons-material/Settings';
-import Badge from '@mui/material/Badge';
-import { useState } from 'react';
+import { Avatar, Menu, MenuItem, ThemeProvider, CssBaseline } from '@mui/material';
+import theme from '../theme';
+
 import { useNotification } from '../contexts/NotificationContext';
 import NotificationHistory from './NotificationHistory';
 import SettingsDialog from './SettingsDialog';
+import { useUser } from '../contexts/UserContext';
 
-function Layout() {
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
+  const { user } = useUser();
+
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
   const isHomePage = location.pathname === '/';
-
-  const handleBack = () => {
-    navigate(-1);
+  
+  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
   };
 
-  const handleNotificationClick = () => {
-    setNotificationOpen(true);
+  const handleClose = () => {
+    setAnchorEl(null);
   };
 
-  const handleSettingsClick = () => {
-    setSettingsOpen(true);
+  const handleMyPage = () => {
+    navigate('/mypage');
+    handleClose();
+  };
+
+  const handleAddRecipe = () => {
+    navigate('/add');
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppBar position="fixed" color="inherit">
-        <Toolbar>
-          {!isHomePage && (
-            <IconButton
-              edge="start"
-              color="inherit"
-              aria-label="back"
-              onClick={handleBack}
-              sx={{ mr: 2 }}
-            >
-              <ArrowBack />
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <AppBar position="fixed">
+          <Toolbar>
+            {!isHomePage && (
+              <IconButton edge="start" color="inherit" onClick={() => navigate(-1)} aria-label="back">
+                <ArrowBackIcon />
+              </IconButton>
+            )}
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              <RouterLink to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                Recipeata
+              </RouterLink>
+            </Typography>
+            <IconButton color="inherit" onClick={() => setNotificationOpen(true)}>
+              <Badge badgeContent={unreadCount} color="error">
+                <NotificationsIcon />
+              </Badge>
             </IconButton>
-          )}
-          <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
-            レシピ管理アプリ
-          </Typography>
-          <IconButton
-            size="large"
-            color="inherit"
-            aria-label="notifications"
-            onClick={handleNotificationClick}
-            sx={{ mr: 1 }}
+            <IconButton
+              edge="end"
+              color="inherit"
+              aria-label="settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <SettingsIcon />
+            </IconButton>
+            <div>
+              <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                onClick={handleMenu}
+                color="inherit"
+              >
+                {user?.photoURL ? <Avatar src={user.photoURL} /> : <AccountCircle />}
+              </IconButton>
+              <Menu
+                id="menu-appbar"
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                open={Boolean(anchorEl)}
+                onClose={handleClose}
+              >
+                <MenuItem onClick={handleMyPage}>マイページ</MenuItem>
+                {/* <MenuItem>ログアウト</MenuItem> */}
+              </Menu>
+            </div>
+          </Toolbar>
+        </AppBar>
+        <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default', mt: '64px', p: 3 }}>
+          {children}
+        </Box>
+
+        {isHomePage && (
+          <Fab
+            color="primary"
+            aria-label="add"
+            sx={{
+              position: 'fixed',
+              bottom: 16,
+              right: 16,
+            }}
+            onClick={handleAddRecipe}
           >
-            <Badge badgeContent={unreadCount} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
-          <IconButton
-            size="large"
-            color="inherit"
-            aria-label="settings"
-            onClick={handleSettingsClick}
-            sx={{ mr: 1 }}
-          >
-            <Settings />
-          </IconButton>
-          <IconButton
-            size="large"
-            color="inherit"
-            aria-label="mypage"
-            component={RouterLink}
-            to="/mypage"
-          >
-            <AccountCircle />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
-      <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
-        <Toolbar />
-        <Outlet />
+            <AddIcon />
+          </Fab>
+        )}
+
+        <NotificationHistory 
+          open={notificationOpen} 
+          onClose={() => setNotificationOpen(false)} 
+        />
+        <SettingsDialog 
+          open={settingsOpen} 
+          onClose={() => setSettingsOpen(false)} 
+        />
       </Box>
-      <Fab
-        color="primary"
-        aria-label="add"
-        sx={{ position: 'fixed', bottom: 32, right: 32 }}
-        component={RouterLink}
-        to="/add"
-      >
-        <AddIcon />
-      </Fab>
-      <NotificationHistory 
-        open={notificationOpen} 
-        onClose={() => setNotificationOpen(false)} 
-      />
-      <SettingsDialog 
-        open={settingsOpen} 
-        onClose={() => setSettingsOpen(false)} 
-      />
-    </Box>
+    </ThemeProvider>
   );
-}
+};
 
 export default Layout; 

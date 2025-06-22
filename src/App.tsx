@@ -1,26 +1,18 @@
-import { Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
-import RecipeList from './pages/RecipeList';
-import AddRecipe from './pages/AddRecipe';
-import MyPage from './pages/MyPage';
-import RecipeDetail from './pages/RecipeDetail';
-import EditRecipe from './pages/EditRecipe';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { Outlet } from 'react-router-dom';
+import { UserProvider } from './contexts/UserContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { RecipeProvider } from './contexts/RecipeContext';
 
 function App() {
   return (
     <SettingsProvider>
       <NotificationProvider>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<RecipeList />} />
-            <Route path="/add" element={<AddRecipe />} />
-            <Route path="/mypage" element={<MyPage />} />
-            <Route path="/recipe/:id" element={<RecipeDetail />} />
-            <Route path="/recipe/:id/edit" element={<EditRecipe />} />
-          </Route>
-        </Routes>
+        <UserProvider>
+          <RecipeProvider>
+            <Outlet />
+          </RecipeProvider>
+        </UserProvider>
       </NotificationProvider>
     </SettingsProvider>
   );

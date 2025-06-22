@@ -1,26 +1,21 @@
-import { useState, useEffect } from 'react';
-import { useUser } from '../contexts/UserContext';
-import { useSettings } from '../contexts/SettingsContext';
-import { useRecipes } from '../contexts/RecipeContext';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useContext } from 'react';
+import { UserContext } from '../contexts/UserContext';
+import { RecipeContext } from '../contexts/RecipeContext';
 import {
+  Avatar,
   Box,
-  TextField,
   Button,
-  Typography,
-  Paper,
   Container,
-  Switch,
-  FormControlLabel,
-  Divider,
-  Card,
-  CardContent,
-  CardMedia,
   Grid,
-  Tabs,
   Tab,
-} from '@mui/material';
-import { Favorite } from '@mui/icons-material';
+  Tabs,
+  TextField,
+  Typography,
+} from "@mui/material";
+import RecipeCard from '../components/RecipeCard';
+import type { Recipe } from '../types';
+import { useNavigate } from 'react-router-dom';
+import { ArrowBack } from '@mui/icons-material';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -35,324 +30,152 @@ function TabPanel(props: TabPanelProps) {
     <div
       role="tabpanel"
       hidden={value !== index}
-      id={`recipe-tabpanel-${index}`}
-      aria-labelledby={`recipe-tab-${index}`}
+      id={`mypage-tabpanel-${index}`}
+      aria-labelledby={`mypage-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ py: 2 }}>{children}</Box>}
+      {value === index && (
+        <Box sx={{ pt: 3 }}>
+          <Grid container spacing={3}>
+            {children}
+          </Grid>
+        </Box>
+      )}
     </div>
   );
 }
 
-function MyPage() {
-  const { user, setUser } = useUser();
-  const { settings, updateNotificationSettings } = useSettings();
-  const { getMyRecipes, getLikedRecipes, getRecentlyViewed } = useRecipes();
+const MyPage = () => {
+  const userContext = useContext(UserContext);
+  const recipeContext = useContext(RecipeContext);
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [store, setStore] = useState('');
-  const [isSaved, setIsSaved] = useState(false);
+
+  if (!userContext || !recipeContext) {
+    return <p>読み込み中...</p>;
+  }
+
+  const { user, updateUserProfile } = userContext;
+  const { recipes, loading: recipesLoading } = recipeContext;
+
   const [tabValue, setTabValue] = useState(0);
+  const [displayName, setDisplayName] = useState(user?.displayName || "");
+  const [store, setStore] = useState(user?.store || "");
 
   useEffect(() => {
     if (user) {
-      setName(user.name);
-      setStore(user.store);
+      setDisplayName(user.displayName || "");
+      setStore(user.store || "");
     }
   }, [user]);
 
-  const handleSave = () => {
-    if (user) {
-      setUser({ ...user, name, store });
-    }
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
-  };
+  const myRecipes = useMemo(() => {
+    if (!user) return [];
+    return recipes.filter((recipe) => recipe.createdById === user.id);
+  }, [recipes, user]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
-  if (!user) {
-    return <Typography>ユーザー情報がありません。</Typography>;
+  const handleProfileUpdate = async () => {
+    if (!user) return;
+    try {
+      await updateUserProfile({ displayName, store });
+      alert("プロフィールを更新しました");
+    } catch (error) {
+      console.error("プロフィールの更新に失敗しました:", error);
+      alert("プロフィールの更新に失敗しました。");
+    }
+  };
+
+  if (recipesLoading) {
+    return <p>レシピを読み込んでいます...</p>;
   }
 
-  const { notifications } = settings;
-  const myRecipes = getMyRecipes(user.name, user.store);
-  const likedRecipes = getLikedRecipes(user.name, user.store);
-  const recentlyViewedRecipes = getRecentlyViewed();
-
-  const handleSwitchChange = (key: keyof typeof notifications) => (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    updateNotificationSettings({ [key]: event.target.checked });
-  };
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('ja-JP');
-  };
+  if (!user) {
+    return (
+      <Container>
+        <Typography>ログインしてください。</Typography>
+      </Container>
+    );
+  }
 
   return (
-    <Container maxWidth="lg">
-      {/* プロフィール設定 */}
-      <Paper
-        elevation={3}
-        sx={{ mt: 8, p: 4, mb: 4 }}
-      >
-        <Typography component="h1" variant="h5" sx={{ mb: 3 }}>
-          マイページ
-        </Typography>
-        <Typography paragraph color="text.secondary">
-          ここで設定した名前と店舗名は、レシピの「作者名」「店舗名」の初期値として自動で入力されます。
-        </Typography>
-        <Box component="form">
-          <TextField
-            label="名前"
-            variant="outlined"
-            fullWidth
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="所属店舗"
-            variant="outlined"
-            fullWidth
-            value={store}
-            onChange={(e) => setStore(e.target.value)}
-            sx={{ mb: 3 }}
-          />
+    <div>
+      <Container>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 0 }}>
+            マイページ
+          </Typography>
           <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSave}
-            fullWidth
-            size="large"
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/')}
           >
-            保存
+            レシピ一覧へ
           </Button>
-          {isSaved && (
-            <Typography color="success.main" sx={{ mt: 2 }}>
-              保存しました！
-            </Typography>
-          )}
         </Box>
-      </Paper>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 4 }}>
+          <Avatar
+            src={user.photoURL || undefined}
+            alt={user.displayName}
+            sx={{ width: 80, height: 80, mr: 2 }}
+          />
+          <Typography variant="h5">{user.displayName}</Typography>
+        </Box>
 
-      {/* レシピ管理セクション */}
-      <Paper sx={{ mb: 4 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="recipe tabs">
-            <Tab label={`MYレシピ (${myRecipes.length})`} />
-            <Tab label={`いいねしたレシピ (${likedRecipes.length})`} />
-            <Tab label={`最近見たレシピ (${recentlyViewedRecipes.length})`} />
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="mypage tabs"
+          >
+            <Tab label="作成したレシピ" />
+            <Tab label="プロフィール編集" />
           </Tabs>
         </Box>
 
-        {/* MYレシピ */}
         <TabPanel value={tabValue} index={0}>
-          {myRecipes.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body1" color="text.secondary">
-                まだレシピを作成していません
-              </Typography>
-              <Button 
-                variant="contained" 
-                onClick={() => navigate('/add-recipe')}
-                sx={{ mt: 2 }}
-              >
-                最初のレシピを作成
-              </Button>
-            </Box>
-          ) : (
+          <Box sx={{ mt: 2 }}>
             <Grid container spacing={2}>
               {myRecipes.map((recipe) => (
                 <Grid item xs={12} sm={6} md={4} key={recipe.id}>
-                  <Card 
-                    sx={{ 
-                      height: '100%', 
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s',
-                      '&:hover': { transform: 'translateY(-4px)' }
-                    }}
-                    onClick={() => navigate(`/recipe/${recipe.id}`)}
-                  >
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={recipe.mainImageUrl || '/placeholder-recipe.jpg'}
-                      alt={recipe.title}
-                    />
-                    <CardContent>
-                      <Typography variant="h6" noWrap>
-                        {recipe.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {recipe.description}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Favorite sx={{ fontSize: 16, color: 'error.main', mr: 0.5 }} />
-                        <Typography variant="caption">{recipe.likes.length}</Typography>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        作成日: {formatDate(recipe.createdAt)}
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                  <RecipeCard recipe={recipe} />
                 </Grid>
               ))}
             </Grid>
-          )}
+          </Box>
         </TabPanel>
-
-        {/* いいねしたレシピ */}
         <TabPanel value={tabValue} index={1}>
-          {likedRecipes.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body1" color="text.secondary">
-                まだいいねしたレシピがありません
-              </Typography>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {likedRecipes.map((recipe) => (
-                <Grid item xs={12} sm={6} md={4} key={recipe.id}>
-                  <Card 
-                    sx={{ 
-                      height: '100%', 
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s',
-                      '&:hover': { transform: 'translateY(-4px)' }
-                    }}
-                    onClick={() => navigate(`/recipe/${recipe.id}`)}
-                  >
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={recipe.mainImageUrl || '/placeholder-recipe.jpg'}
-                      alt={recipe.title}
-                    />
-                    <CardContent>
-                      <Typography variant="h6" noWrap>
-                        {recipe.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {recipe.description}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Favorite sx={{ fontSize: 16, color: 'error.main', mr: 0.5 }} />
-                        <Typography variant="caption">{recipe.likes.length}</Typography>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        投稿者: {recipe.author} ({recipe.store})
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
+          <Box component="form" sx={{ mt: 3 }} noValidate autoComplete="off">
+            <Typography variant="h6" gutterBottom>
+              プロフィール情報
+            </Typography>
+            <TextField
+              label="名前"
+              fullWidth
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              label="所属店舗"
+              fullWidth
+              value={store}
+              onChange={(e) => setStore(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleProfileUpdate}
+            >
+              保存
+            </Button>
+          </Box>
         </TabPanel>
-
-        {/* 最近見たレシピ */}
-        <TabPanel value={tabValue} index={2}>
-          {recentlyViewedRecipes.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body1" color="text.secondary">
-                まだレシピを見ていません
-              </Typography>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {recentlyViewedRecipes.map((recipe) => (
-                <Grid item xs={12} sm={6} md={4} key={recipe.id}>
-                  <Card 
-                    sx={{ 
-                      height: '100%', 
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s',
-                      '&:hover': { transform: 'translateY(-4px)' }
-                    }}
-                    onClick={() => navigate(`/recipe/${recipe.id}`)}
-                  >
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={recipe.mainImageUrl || '/placeholder-recipe.jpg'}
-                      alt={recipe.title}
-                    />
-                    <CardContent>
-                      <Typography variant="h6" noWrap>
-                        {recipe.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {recipe.description}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Favorite sx={{ fontSize: 16, color: 'error.main', mr: 0.5 }} />
-                        <Typography variant="caption">{recipe.likes.length}</Typography>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        投稿者: {recipe.author} ({recipe.store})
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </TabPanel>
-      </Paper>
-
-      {/* 通知設定セクション */}
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          通知設定
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={notifications.recipeAdded}
-              onChange={handleSwitchChange('recipeAdded')}
-              color="primary"
-            />
-          }
-          label="レシピが追加されたとき通知"
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={notifications.recipeEdited}
-              onChange={handleSwitchChange('recipeEdited')}
-              color="primary"
-            />
-          }
-          label="レシピが編集されたとき通知"
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={notifications.recipeLiked}
-              onChange={handleSwitchChange('recipeLiked')}
-              color="primary"
-            />
-          }
-          label="レシピにいいねがついたとき通知"
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={notifications.recipeCommented}
-              onChange={handleSwitchChange('recipeCommented')}
-              color="primary"
-            />
-          }
-          label="レシピにコメントがついたとき通知"
-        />
-      </Paper>
-    </Container>
+      </Container>
+    </div>
   );
 }
 

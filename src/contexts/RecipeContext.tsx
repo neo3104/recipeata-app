@@ -1,414 +1,267 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useNotification } from './NotificationContext';
-import { useSettings } from './SettingsContext';
+import {
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  limit,
+  Timestamp,
+  arrayUnion,
+  arrayRemove,
+} from "firebase/firestore";
+import { db } from "../firebase";
+import type { Recipe, Comment } from '../types';
+import { useUser } from './UserContext';
 
-export interface Ingredient {
-  id: number;
-  name: string;
-  quantity: string;
-}
-
-export interface Step {
-  id: number;
-  description: string;
-  image: File | null;
-  imageUrl: string | null;
-}
-
-export interface Like {
-  userId: string; // ユーザーID（名前+店舗の組み合わせ）
-  userName: string;
-  userStore: string;
-  timestamp: number;
-}
-
-export interface Comment {
-  id: string;
-  userId: string; // ユーザーID（名前+店舗の組み合わせ）
-  userName: string;
-  userStore: string;
-  content: string;
-  timestamp: number;
-  replies: Reply[];
-}
-
-export interface Reply {
-  id: string;
-  userId: string; // ユーザーID（名前+店舗の組み合わせ）
-  userName: string;
-  userStore: string;
-  content: string;
-  timestamp: number;
-  parentCommentId: string;
-}
-
-export interface Recipe {
-  id: string;
-  title: string;
-  description: string;
-  mainImage: File | null;
-  mainImageUrl: string | null;
-  totalTime: string;
-  servings: string;
-  advice: string;
-  author: string;
-  store: string;
-  tags: string[];
-  ingredients: Ingredient[];
-  steps: Step[];
-  createdAt: number;
-  likes: Like[];
-  comments: Comment[];
-}
+// FirestoreのTimestampを安全にDateオブジェクトに変換するヘルパー関数
+const safeToDate = (value: any): Date => {
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  // 文字列や数値からDateへの変換を試みる
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+      return d;
+    }
+  }
+  // 不明な形式やnull/undefinedの場合は現在時刻を返すなど、エラーを防ぐ
+  return new Date();
+};
 
 interface RecipeContextType {
   recipes: Recipe[];
-  addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'likes' | 'comments'>) => void;
-  updateRecipe: (recipe: Recipe) => void;
-  deleteRecipe: (id: string) => void;
-  addLike: (recipeId: string, userName: string, userStore: string) => void;
-  removeLike: (recipeId: string, userName: string, userStore: string) => void;
-  addComment: (recipeId: string, userName: string, userStore: string, content: string) => void;
-  deleteComment: (recipeId: string, commentId: string) => void;
-  addReply: (recipeId: string, commentId: string, userName: string, userStore: string, content: string) => void;
-  deleteReply: (recipeId: string, commentId: string, replyId: string) => void;
-  addToRecentlyViewed: (recipeId: string) => void;
-  getRecentlyViewed: () => Recipe[];
-  getMyRecipes: (userName: string, userStore: string) => Recipe[];
-  getLikedRecipes: (userName: string, userStore: string) => Recipe[];
   loading: boolean;
+  error: string | null;
+  addRecipe: (recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt' | 'likes' | 'comments'>) => Promise<string>;
+  updateRecipe: (id: string, recipeData: Partial<Recipe>) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
+  getRecipeById: (id: string) => Recipe | undefined;
+  toggleLike: (recipeId: string, userId: string) => Promise<void>;
+  addComment: (recipeId: string, comment: Omit<Comment, 'id'|'createdAt'>) => Promise<void>;
 }
 
-const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
+export const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
 
-export function useRecipes() {
+export const useRecipes = (): RecipeContextType => {
   const context = useContext(RecipeContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useRecipes must be used within a RecipeProvider');
   }
   return context;
-}
+};
 
 export const RecipeProvider = ({ children }: { children: ReactNode }) => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { showNotification } = useNotification();
-  const { settings } = useSettings();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user, loading: userLoading } = useUser();
 
   useEffect(() => {
-    const loadRecipes = () => {
+    const fetchRecipes = async () => {
+      if (!user) {
+        // ユーザーがいない（ログアウト状態など）場合はレシピを取得しない
+        setRecipes([]);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
       try {
-        const savedRecipes = localStorage.getItem('recipeata-recipes');
-        if (savedRecipes) {
-          const parsedRecipes = JSON.parse(savedRecipes);
-          // 既存のレシピにいいねとコメントの配列を追加
-          const updatedRecipes = parsedRecipes.map((recipe: any) => ({
-            ...recipe,
-            likes: recipe.likes || [],
-            comments: (recipe.comments || []).map((comment: any) => ({
-              ...comment,
-              replies: comment.replies || [],
+        const q = query(collection(db, "recipes"), orderBy("createdAt", "desc"), limit(50));
+        const querySnapshot = await getDocs(q);
+        const recipesData = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          // 型を強制する前にcreatedByIdが存在するかチェック
+          if (!data.createdById) {
+            console.warn(`Recipe with id ${doc.id} is missing createdById`);
+            // ここでデフォルト値を設定するか、読み飛ばすかを選択
+            // 今回は読み飛ばす
+            return null;
+          }
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: safeToDate(data.createdAt),
+            updatedAt: safeToDate(data.updatedAt),
+            comments: (data.comments || []).map((c: any) => ({
+              ...c,
+              createdAt: safeToDate(c.createdAt),
             })),
-          }));
-          setRecipes(updatedRecipes);
-        }
-      } catch (error) {
-        console.error('Failed to load recipes from localStorage', error);
+          } as Recipe;
+        }).filter((r): r is Recipe => r !== null); // nullを除外
+        setRecipes(recipesData);
+      } catch (e) {
+        console.error("Error fetching recipes: ", e);
+        setError("レシピの取得に失敗しました。");
       } finally {
         setLoading(false);
       }
     };
 
-    loadRecipes();
-  }, []);
+    if (!userLoading) {
+      fetchRecipes();
+    }
+  }, [user, userLoading]);
 
-  const addRecipe = (recipeData: Omit<Recipe, 'id' | 'createdAt' | 'likes' | 'comments'>) => {
+  const addRecipe = async (
+    recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt' | 'likes' | 'comments'>,
+  ): Promise<string> => {
     try {
-      const newRecipe: Recipe = {
+      setLoading(true);
+      const docData = {
         ...recipeData,
-        id: Date.now().toString(),
-        createdAt: Date.now(),
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
         likes: [],
         comments: [],
       };
+
+      const docRef = await addDoc(collection(db, "recipes"), docData);
       
-      const updatedRecipes = [...recipes, newRecipe];
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-      // 通知
-      if (settings.notifications.recipeAdded) {
-        showNotification(`「${newRecipe.title}」が追加されました`, 'success');
-      }
-    } catch (error) {
-      console.error('Failed to save recipe to localStorage', error);
-    }
-  };
-
-  const updateRecipe = (recipe: Recipe) => {
-    try {
-      const updatedRecipes = recipes.map(r => (r.id === recipe.id ? recipe : r));
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-      // 通知
-      if (settings.notifications.recipeEdited) {
-        showNotification(`「${recipe.title}」が編集されました`, 'info');
-      }
-    } catch (error) {
-      console.error('Failed to update recipe in localStorage', error);
-    }
-  };
-
-  const deleteRecipe = (id: string) => {
-    try {
-      const updatedRecipes = recipes.filter(recipe => recipe.id !== id);
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-    } catch (error) {
-      console.error('Failed to delete recipe from localStorage', error);
-    }
-  };
-
-  const addLike = (recipeId: string, userName: string, userStore: string) => {
-    try {
-      const userId = `${userName}-${userStore}`;
-      const updatedRecipes = recipes.map(recipe => {
-        if (recipe.id === recipeId) {
-          // 既にいいねしているかチェック
-          const alreadyLiked = recipe.likes.some(like => like.userId === userId);
-          if (alreadyLiked) {
-            return recipe; // 既にいいね済みの場合は何もしない
-          }
-          
-          const newLike: Like = {
-            userId,
-            userName,
-            userStore,
-            timestamp: Date.now(),
-          };
-          
-          // 通知
-          if (settings.notifications.recipeLiked) {
-            showNotification(`「${recipe.title}」にいいねしました`, 'success');
-          }
-          return {
-            ...recipe,
-            likes: [...recipe.likes, newLike]
-          };
-        }
-        return recipe;
-      });
-      
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-    } catch (error) {
-      console.error('Failed to add like to localStorage', error);
-    }
-  };
-
-  const removeLike = (recipeId: string, userName: string, userStore: string) => {
-    try {
-      const userId = `${userName}-${userStore}`;
-      const updatedRecipes = recipes.map(recipe => {
-        if (recipe.id === recipeId) {
-          return {
-            ...recipe,
-            likes: recipe.likes.filter(like => like.userId !== userId)
-          };
-        }
-        return recipe;
-      });
-      
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-    } catch (error) {
-      console.error('Failed to remove like from localStorage', error);
-    }
-  };
-
-  const addComment = (recipeId: string, userName: string, userStore: string, content: string) => {
-    try {
-      const userId = `${userName}-${userStore}`;
-      const newComment: Comment = {
-        id: Date.now().toString(),
-        userId,
-        userName,
-        userStore,
-        content: content.trim(),
-        timestamp: Date.now(),
-        replies: [],
+      const newRecipe: Recipe = {
+        ...(docData as Omit<Recipe, 'id'|'createdAt'|'updatedAt'>),
+        id: docRef.id,
+        createdAt: docData.createdAt.toDate(),
+        updatedAt: docData.updatedAt.toDate(),
       };
       
-      const updatedRecipes = recipes.map(recipe => {
-        if (recipe.id === recipeId) {
-          // 通知
-          if (settings.notifications.recipeCommented) {
-            showNotification(`「${recipe.title}」にコメントしました`, 'info');
-          }
-          return {
-            ...recipe,
-            comments: [...recipe.comments, newComment]
-          };
-        }
-        return recipe;
-      });
-      
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-    } catch (error) {
-      console.error('Failed to add comment to localStorage', error);
+      setRecipes((prev) => [newRecipe, ...prev]);
+      return docRef.id;
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      setError("レシピの追加に失敗しました。");
+      throw e;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const addReply = (recipeId: string, commentId: string, userName: string, userStore: string, content: string) => {
+  const updateRecipe = async (
+    id: string,
+    recipeUpdate: Partial<Recipe>
+  ): Promise<void> => {
+    const originalRecipe = recipes.find(r => r.id === id);
+    if (!originalRecipe) {
+      throw new Error("更新対象のレシピが見つかりません。");
+    }
+
     try {
-      const userId = `${userName}-${userStore}`;
-      const newReply: Reply = {
-        id: Date.now().toString(),
-        userId,
-        userName,
-        userStore,
-        content: content.trim(),
-        timestamp: Date.now(),
-        parentCommentId: commentId,
+      setLoading(true);
+      
+      const docData = {
+        ...recipeUpdate,
+        updatedAt: Timestamp.now(),
       };
       
-      const updatedRecipes = recipes.map(recipe => {
-        if (recipe.id === recipeId) {
-          return {
-            ...recipe,
-            comments: recipe.comments.map(comment => {
-              if (comment.id === commentId) {
-                return {
-                  ...comment,
-                  replies: [...comment.replies, newReply]
-                };
-              }
-              return comment;
-            })
-          };
-        }
-        return recipe;
-      });
+      const recipeRef = doc(db, 'recipes', id);
+      await updateDoc(recipeRef, docData);
+
+      const updatedRecipeData = {
+        ...originalRecipe,
+        ...recipeUpdate,
+        updatedAt: docData.updatedAt.toDate(),
+      }
+
+      setRecipes((prev) =>
+        prev.map((recipe) =>
+          recipe.id === id ? updatedRecipeData : recipe
+        )
+      );
+    } catch (e) {
+      console.error("Error updating document: ", e);
+      setError("レシピの更新に失敗しました。");
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteRecipe = async (id: string): Promise<void> => {
+    try {
+      setLoading(true);
+      await deleteDoc(doc(db, "recipes", id));
+      setRecipes((prev) => prev.filter((r) => r.id !== id));
+    } catch (e) {
+      console.error("Error deleting document: ", e);
+      setError("レシピの削除に失敗しました。");
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleLike = async (recipeId: string, userId: string) => {
+    const recipeRef = doc(db, "recipes", recipeId);
+    const recipe = recipes.find((r) => r.id === recipeId);
+    if (!recipe) return;
+
+    try {
+      const newLikes = recipe.likes.includes(userId)
+        ? arrayRemove(userId)
+        : arrayUnion(userId);
+      await updateDoc(recipeRef, { likes: newLikes });
       
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-    } catch (error) {
-      console.error('Failed to add reply to localStorage', error);
+      setRecipes(prev => prev.map(r => 
+        r.id === recipeId 
+        ? {...r, likes: r.likes.includes(userId) ? r.likes.filter(id => id !== userId) : [...r.likes, userId]}
+        : r
+      ));
+
+    } catch (e) {
+      console.error("Error toggling like: ", e);
+      setError("いいねの処理に失敗しました。");
+      throw e;
     }
   };
 
-  const deleteReply = (recipeId: string, commentId: string, replyId: string) => {
+  const addComment = async (recipeId: string, comment: Omit<Comment, 'id'|'createdAt'>) => {
     try {
-      const updatedRecipes = recipes.map(recipe => {
-        if (recipe.id === recipeId) {
-          return {
-            ...recipe,
-            comments: recipe.comments.map(comment => {
-              if (comment.id === commentId) {
-                return {
-                  ...comment,
-                  replies: comment.replies.filter(reply => reply.id !== replyId)
-                };
-              }
-              return comment;
-            })
-          };
-        }
-        return recipe;
+      const newCommentData = {
+        ...comment,
+        createdAt: Timestamp.now(),
+      };
+
+      const recipeRef = doc(db, "recipes", recipeId);
+      await updateDoc(recipeRef, {
+        comments: arrayUnion(newCommentData),
       });
-      
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-    } catch (error) {
-      console.error('Failed to delete reply from localStorage', error);
+
+      const newCommentForState: Comment = {
+        ...newCommentData,
+        id: doc(collection(db, 'dummy')).id,
+        createdAt: newCommentData.createdAt.toDate(),
+      };
+
+      setRecipes(prev => prev.map(r => 
+        r.id === recipeId
+        ? {...r, comments: [...r.comments, newCommentForState]}
+        : r
+      ));
+
+    } catch (e) {
+      console.error("Error adding comment: ", e);
+      setError("コメントの追加に失敗しました。");
+      throw e;
     }
   };
 
-  const deleteComment = (recipeId: string, commentId: string) => {
-    try {
-      const updatedRecipes = recipes.map(recipe => {
-        if (recipe.id === recipeId) {
-          return {
-            ...recipe,
-            comments: recipe.comments.filter(comment => comment.id !== commentId)
-          };
-        }
-        return recipe;
-      });
-      
-      localStorage.setItem('recipeata-recipes', JSON.stringify(updatedRecipes));
-      setRecipes(updatedRecipes);
-    } catch (error) {
-      console.error('Failed to delete comment from localStorage', error);
-    }
+  const getRecipeById = (id: string): Recipe | undefined => {
+    return recipes.find((recipe) => recipe.id === id);
   };
 
-  const addToRecentlyViewed = (recipeId: string) => {
-    try {
-      const recipe = recipes.find(r => r.id === recipeId);
-      if (!recipe) return;
-
-      const recentlyViewed = JSON.parse(localStorage.getItem('recipeata-recently-viewed') || '[]');
-      const updatedRecentlyViewed = [
-        recipeId,
-        ...recentlyViewed.filter((id: string) => id !== recipeId)
-      ].slice(0, 10); // 最新10件まで保持
-
-      localStorage.setItem('recipeata-recently-viewed', JSON.stringify(updatedRecentlyViewed));
-    } catch (error) {
-      console.error('Failed to add to recently viewed', error);
-    }
-  };
-
-  const getRecentlyViewed = (): Recipe[] => {
-    try {
-      const recentlyViewedIds = JSON.parse(localStorage.getItem('recipeata-recently-viewed') || '[]');
-      return recipes.filter(recipe => recentlyViewedIds.includes(recipe.id));
-    } catch (error) {
-      console.error('Failed to get recently viewed recipes', error);
-      return [];
-    }
-  };
-
-  const getMyRecipes = (userName: string, userStore: string): Recipe[] => {
-    return recipes.filter(recipe => 
-      recipe.author === userName && recipe.store === userStore
-    );
-  };
-
-  const getLikedRecipes = (userName: string, userStore: string): Recipe[] => {
-    const userId = `${userName}-${userStore}`;
-    return recipes.filter(recipe => 
-      recipe.likes.some(like => like.userId === userId)
-    );
-  };
-
-  const value = {
-    recipes,
-    addRecipe,
-    updateRecipe,
-    deleteRecipe,
-    addLike,
-    removeLike,
-    addComment,
-    deleteComment,
-    addReply,
-    deleteReply,
-    addToRecentlyViewed,
-    getRecentlyViewed,
-    getMyRecipes,
-    getLikedRecipes,
-    loading
-  };
-
-  if (loading) {
-    return null;
-  }
+  const value = { recipes, loading, error, addRecipe, updateRecipe, deleteRecipe, getRecipeById, toggleLike, addComment };
 
   return (
     <RecipeContext.Provider value={value}>
       {children}
     </RecipeContext.Provider>
   );
-} 
+}; 

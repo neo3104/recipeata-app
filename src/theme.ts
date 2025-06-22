@@ -1,7 +1,7 @@
-import { createTheme, responsiveFontSizes } from '@mui/material/styles';
+import * as Mui from '@mui/material/styles';
 
 // アプリのカスタムテーマ（近未来風オレンジ・ライトモード）
-let theme = createTheme({
+let theme = Mui.createTheme({
   palette: {
     mode: 'light', // ダークモードからライトモードへ変更
     primary: {
@@ -66,6 +66,6 @@ let theme = createTheme({
   },
 });
 
-theme = responsiveFontSizes(theme);
+theme = Mui.responsiveFontSizes(theme);
 
 export default theme; 
