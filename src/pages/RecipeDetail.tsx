@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useContext, useState, useRef } from 'react';
+import { useContext, useState, useRef, useMemo } from 'react';
 import { RecipeContext } from '../contexts/RecipeContext';
 import { UserContext } from '../contexts/UserContext';
 import { generateRecipePDF, waitForImages } from '../utils/pdfUtils';
@@ -25,8 +25,80 @@ import {
   Dialog,
   DialogContent,
   Alert,
+  Menu,
+  MenuItem,
+  Collapse
 } from '@mui/material';
-import { Delete, ArrowBack, Edit, Favorite, FavoriteBorder, Send, CheckCircle, PictureAsPdf } from '@mui/icons-material';
+import { Delete, ArrowBack, Edit, Favorite, FavoriteBorder, Send, CheckCircle, PictureAsPdf, Reply } from '@mui/icons-material';
+
+const formatDate = (date: any): string => {
+  if (!date) return '';
+  const d = date instanceof Date ? date : date.toDate();
+  return d.toLocaleString('ja-JP');
+};
+
+interface CommentItemProps {
+  comment: Comment;
+  onReply: (parentId: string, text: string) => void;
+  isReply?: boolean;
+}
+
+const CommentItem: React.FC<CommentItemProps> = ({ comment, onReply, isReply = false }) => {
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyText, setReplyText] = useState('');
+
+  const handleReplySubmit = () => {
+    if (replyText.trim()) {
+      onReply(comment.id, replyText.trim());
+      setReplyText('');
+      setShowReplyForm(false);
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 2, pl: isReply ? 4 : 0 }}>
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <Avatar src={comment.createdBy.photoURL || undefined} />
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="subtitle2">{comment.createdBy.name}</Typography>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{comment.text}</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">{formatDate(comment.createdAt)}</Typography>
+            {!isReply && (
+              <Button size="small" startIcon={<Reply />} onClick={() => setShowReplyForm(!showReplyForm)}>
+                返信する
+              </Button>
+            )}
+          </Box>
+        </Box>
+      </Box>
+
+      <Collapse in={showReplyForm}>
+        <Box sx={{ mt: 1, ml: '56px', display: 'flex', gap: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            variant="outlined"
+            placeholder="返信を追加..."
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+          />
+          <IconButton color="primary" onClick={handleReplySubmit} disabled={!replyText.trim()}>
+            <Send />
+          </IconButton>
+        </Box>
+      </Collapse>
+
+      {comment.replies && comment.replies.length > 0 && (
+        <Box sx={{ mt: 1 }}>
+          {comment.replies.map((reply) => (
+            <CommentItem key={reply.id} comment={reply} onReply={onReply} isReply />
+          ))}
+        </Box>
+      )}
+    </Box>
+  )
+}
 
 function RecipeDetail() {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +112,7 @@ function RecipeDetail() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
+  const [likesAnchorEl, setLikesAnchorEl] = useState<null | HTMLElement>(null);
 
   if (!recipeContext || !userContext) {
     return <p>読み込み中...</p>;
@@ -54,18 +127,22 @@ function RecipeDetail() {
   const isSameStore = recipe && user && recipe.createdBy?.store && user.store && recipe.createdBy.store === user.store;
   const canEdit = isAuthor || isSameStore;
 
-  const hasLiked = user?.id ? recipe?.likes.includes(user.id) : false;
+  const hasLiked = user?.id ? recipe?.likes.some(like => like.userId === user.id) : false;
 
   const handleLike = () => {
-    if (!id || !user?.id) return;
-    toggleLike(id, user.id);
+    if (!id || !user) return;
+    toggleLike(id, {
+      userId: user.id,
+      userName: user.displayName,
+      userPhotoURL: user.photoURL
+    });
   };
 
-  const handleAddComment = () => {
-    if (!id || !user || !commentText.trim()) return;
+  const handleAddComment = (text: string, parentId?: string) => {
+    if (!id || !user || !text.trim()) return;
     
     const newComment: Omit<Comment, 'id' | 'createdAt'> = {
-      text: commentText.trim(),
+      text: text.trim(),
       userId: user.id,
       createdBy: {
         name: user.displayName,
@@ -73,7 +150,7 @@ function RecipeDetail() {
       },
     };
 
-    addComment(id, newComment);
+    addComment(id, newComment, parentId);
     setCommentText('');
   };
   
@@ -120,8 +197,6 @@ function RecipeDetail() {
       setIsGeneratingPDF(false);
     }
   };
-
-  const formatDate = (date: Date) => date.toLocaleString('ja-JP');
 
   if (loading) {
     return (
@@ -215,7 +290,7 @@ function RecipeDetail() {
               <Typography variant="h5" gutterBottom>材料</Typography>
               <List>
                 {recipe.ingredients.map((ing, index) => (
-                  ing.name && <ListItem key={index} disablePadding>
+                  ing.name && <ListItem key={`ingredient-${index}`} disablePadding>
                     <ListItemIcon sx={{ minWidth: 32 }}><CheckCircle fontSize="small" color="primary" /></ListItemIcon>
                     <ListItemText primary={ing.name} secondary={ing.quantity} />
                   </ListItem>
@@ -226,7 +301,7 @@ function RecipeDetail() {
               <Typography variant="h5" gutterBottom>作り方</Typography>
               <List sx={{p: 0}}>
                 {recipe.steps.map((step, index) => (
-                  step && <ListItem key={index} alignItems="flex-start" sx={{flexDirection: 'column', mb: 2}}>
+                  step && <ListItem key={`step-${index}`} alignItems="flex-start" sx={{flexDirection: 'column', mb: 2}}>
                     <Box sx={{display: 'flex', width: '100%', mb: step.imageUrl ? 1 : 0}}>
                       <Avatar sx={{ width: 32, height: 32, fontSize: '1rem', mr: 2, bgcolor: 'primary.main', flexShrink: 0 }}>{index + 1}</Avatar>
                       <ListItemText primary={<Typography>{step.description}</Typography>} />
@@ -251,7 +326,25 @@ function RecipeDetail() {
             <IconButton color="primary" onClick={handleLike} disabled={!user}>
                 {hasLiked ? <Favorite sx={{color: 'red'}} /> : <FavoriteBorder />}
             </IconButton>
-            <Typography variant="body2">{recipe.likes.length} いいね</Typography>
+            <Typography 
+              variant="body2"
+              onClick={(e) => recipe.likes.length > 0 && setLikesAnchorEl(e.currentTarget)}
+              sx={recipe.likes.length > 0 ? { cursor: 'pointer', '&:hover': { textDecoration: 'underline' } } : {}}
+            >
+              {recipe.likes.length} いいね
+            </Typography>
+            <Menu
+              anchorEl={likesAnchorEl}
+              open={Boolean(likesAnchorEl)}
+              onClose={() => setLikesAnchorEl(null)}
+            >
+              {recipe.likes.map(like => (
+                <MenuItem key={like.userId} onClick={() => setLikesAnchorEl(null)}>
+                  <Avatar src={like.userPhotoURL || undefined} sx={{ width: 24, height: 24, mr: 1 }} />
+                  {like.userName}
+                </MenuItem>
+              ))}
+            </Menu>
           </Box>
           <Divider sx={{ my: 3 }} />
           <Typography variant="h6" gutterBottom>コメント ({recipe.comments.length})</Typography>
@@ -264,32 +357,16 @@ function RecipeDetail() {
                       label="コメントを追加"
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment(commentText)}
                   />
-                  <IconButton color="primary" onClick={handleAddComment} disabled={!commentText.trim()}>
+                  <IconButton color="primary" onClick={() => handleAddComment(commentText)} disabled={!commentText.trim() || !user}>
                       <Send />
                   </IconButton>
               </Box>
           )}
           <List>
               {recipe.comments.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()).map((comment) => (
-              <ListItem key={comment.id} alignItems="flex-start">
-                  <Avatar src={comment.createdBy.photoURL || undefined} sx={{ mr: 2 }} />
-                  <ListItemText
-                    primary={comment.createdBy.name}
-                    secondary={
-                        <>
-                        <Typography component="span" variant="body2" color="text.primary">
-                            {comment.text}
-                        </Typography>
-                        <br />
-                        <Typography component="span" variant="caption" color="text.secondary">
-                            {formatDate(comment.createdAt)}
-                        </Typography>
-                        </>
-                    }
-                  />
-              </ListItem>
+                <CommentItem key={comment.id} comment={comment} onReply={(parentId, text) => handleAddComment(text, parentId)} />
               ))}
           </List>
         </Paper>

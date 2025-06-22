@@ -20,7 +20,7 @@ import {
   Alert,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
-import { Search, Add, Person, Sort } from '@mui/icons-material';
+import { Search, Add, Person, Sort, Storefront, Tag } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import RecipeCard from '../components/RecipeCard';
 import { normalizeText } from '../utils/textUtils';
@@ -135,7 +135,7 @@ export default function RecipeList() {
           variant="outlined"
           value={storeSearch}
           onChange={(e) => setStoreSearch(e.target.value)}
-          InputProps={{ startAdornment: <InputAdornment position="start"><Search /></InputAdornment> }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><Storefront /></InputAdornment> }}
           sx={{ flexGrow: 1, minWidth: '200px' }}
         />
         <TextField
@@ -143,7 +143,7 @@ export default function RecipeList() {
           variant="outlined"
           value={tagSearch}
           onChange={(e) => setTagSearch(e.target.value)}
-          InputProps={{ startAdornment: <InputAdornment position="start"><Search /></InputAdornment> }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><Tag /></InputAdornment> }}
           sx={{ flexGrow: 1, minWidth: '200px' }}
         />
         <FormControl variant="outlined" sx={{ minWidth: 150 }}>
@@ -189,25 +189,6 @@ export default function RecipeList() {
             )}
           </Box>
         </>
-      )}
-
-      {user && (
-        <Box sx={{ position: 'fixed', bottom: 32, right: 32, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Fab
-            color="secondary"
-            aria-label="my page"
-            onClick={() => navigate('/mypage')}
-          >
-            <Person />
-          </Fab>
-          <Fab
-            color="primary"
-            aria-label="add recipe"
-            onClick={() => navigate('/add')}
-          >
-            <Add />
-          </Fab>
-        </Box>
       )}
     </Container>
   );

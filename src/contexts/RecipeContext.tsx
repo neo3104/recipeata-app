@@ -13,9 +13,12 @@ import {
   Timestamp,
   arrayUnion,
   arrayRemove,
+  serverTimestamp,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import type { Recipe, Comment } from '../types';
+import type { Recipe, Comment, Like } from '../types';
 import { useUser } from './UserContext';
 
 // FirestoreのTimestampを安全にDateオブジェクトに変換するヘルパー関数
@@ -45,8 +48,8 @@ interface RecipeContextType {
   updateRecipe: (id: string, recipeData: Partial<Recipe>) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
   getRecipeById: (id: string) => Recipe | undefined;
-  toggleLike: (recipeId: string, userId: string) => Promise<void>;
-  addComment: (recipeId: string, comment: Omit<Comment, 'id'|'createdAt'>) => Promise<void>;
+  toggleLike: (recipeId: string, user: { userId: string, userName: string, userPhotoURL: string | null }) => Promise<void>;
+  addComment: (recipeId: string, comment: Omit<Comment, 'id' | 'createdAt'>, parentId?: string) => Promise<void>;
 }
 
 export const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
@@ -198,58 +201,100 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const toggleLike = async (recipeId: string, userId: string) => {
-    const recipeRef = doc(db, "recipes", recipeId);
-    const recipe = recipes.find((r) => r.id === recipeId);
-    if (!recipe) return;
-
-    try {
-      const newLikes = recipe.likes.includes(userId)
-        ? arrayRemove(userId)
-        : arrayUnion(userId);
-      await updateDoc(recipeRef, { likes: newLikes });
-      
-      setRecipes(prev => prev.map(r => 
-        r.id === recipeId 
-        ? {...r, likes: r.likes.includes(userId) ? r.likes.filter(id => id !== userId) : [...r.likes, userId]}
-        : r
-      ));
-
-    } catch (e) {
-      console.error("Error toggling like: ", e);
-      setError("いいねの処理に失敗しました。");
-      throw e;
+  const toggleLike = async (recipeId: string, user: { userId: string, userName: string, userPhotoURL: string | null }) => {
+    if (!user?.userId) {
+      console.error("User is not authenticated. Cannot like.");
+      return;
     }
+    const recipeRef = doc(db, 'recipes', recipeId);
+    const currentRecipe = recipes.find(r => r.id === recipeId);
+    if (!currentRecipe) return;
+
+    const likeData: Like = {
+      userId: user.userId,
+      userName: user.userName,
+      userPhotoURL: user.userPhotoURL,
+    };
+
+    const isLiked = currentRecipe.likes.some(like => like.userId === user.userId);
+
+    const updateData = {
+      updatedAt: serverTimestamp()
+    };
+
+    if (isLiked) {
+      const existingLike = currentRecipe.likes.find(like => like.userId === user.userId);
+      await updateDoc(recipeRef, {
+        ...updateData,
+        likes: arrayRemove(existingLike)
+      });
+    } else {
+      await updateDoc(recipeRef, {
+        ...updateData,
+        likes: arrayUnion(likeData)
+      });
+    }
+
+    setRecipes(prevRecipes => 
+      prevRecipes.map(recipe => {
+        if (recipe.id === recipeId) {
+          const newLikes = isLiked
+            ? recipe.likes.filter(like => like.userId !== user.userId)
+            : [...recipe.likes, likeData];
+          return { ...recipe, likes: newLikes };
+        }
+        return recipe;
+      })
+    );
   };
 
-  const addComment = async (recipeId: string, comment: Omit<Comment, 'id'|'createdAt'>) => {
-    try {
-      const newCommentData = {
-        ...comment,
-        createdAt: Timestamp.now(),
-      };
+  const addComment = async (recipeId: string, comment: Omit<Comment, 'id' | 'createdAt'>, parentId?: string) => {
+    const recipeRef = doc(db, 'recipes', recipeId);
+    const newComment = {
+      ...comment,
+      id: doc(collection(db, 'dummy')).id, // 一時的なID
+      createdAt: new Date(),
+      replies: [],
+    };
 
-      const recipeRef = doc(db, "recipes", recipeId);
+    try {
+      const currentRecipe = recipes.find(r => r.id === recipeId);
+      if (!currentRecipe) {
+        throw new Error('Recipe not found');
+      }
+
+      let updatedComments;
+      if (parentId) {
+        // 返信の場合
+        updatedComments = currentRecipe.comments.map(c => {
+          if (c.id === parentId) {
+            return {
+              ...c,
+              replies: [...(c.replies || []), newComment],
+            };
+          }
+          return c;
+        });
+      } else {
+        // 新規コメントの場合
+        updatedComments = [...currentRecipe.comments, newComment];
+      }
+
       await updateDoc(recipeRef, {
-        comments: arrayUnion(newCommentData),
+        comments: updatedComments,
+        updatedAt: serverTimestamp(),
       });
 
-      const newCommentForState: Comment = {
-        ...newCommentData,
-        id: doc(collection(db, 'dummy')).id,
-        createdAt: newCommentData.createdAt.toDate(),
-      };
-
-      setRecipes(prev => prev.map(r => 
-        r.id === recipeId
-        ? {...r, comments: [...r.comments, newCommentForState]}
-        : r
-      ));
-
+      setRecipes(prevRecipes =>
+        prevRecipes.map(recipe =>
+          recipe.id === recipeId
+            ? { ...recipe, comments: updatedComments, updatedAt: new Date() }
+            : recipe
+        )
+      );
     } catch (e) {
       console.error("Error adding comment: ", e);
       setError("コメントの追加に失敗しました。");
-      throw e;
     }
   };
 
@@ -257,7 +302,17 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
     return recipes.find((recipe) => recipe.id === id);
   };
 
-  const value = { recipes, loading, error, addRecipe, updateRecipe, deleteRecipe, getRecipeById, toggleLike, addComment };
+  const value = {
+    recipes,
+    loading,
+    error,
+    addRecipe,
+    updateRecipe,
+    deleteRecipe,
+    getRecipeById,
+    toggleLike,
+    addComment,
+  };
 
   return (
     <RecipeContext.Provider value={value}>

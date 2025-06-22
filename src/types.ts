@@ -25,6 +25,13 @@ export interface Comment {
   };
   text: string;
   createdAt: Date;
+  replies?: Comment[];
+}
+
+export interface Like {
+  userId: string;
+  userName: string;
+  userPhotoURL: string | null;
 }
 
 export interface Recipe {
@@ -43,7 +50,7 @@ export interface Recipe {
   };
   createdAt: Date;
   updatedAt: Date;
-  likes: string[];
+  likes: Like[];
   comments: Comment[];
   advice?: string;
   tags: string[];
@@ -59,8 +66,8 @@ export interface RecipeContextType {
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt' | 'likes' | 'comments' | 'viewedAt'>) => Promise<string>;
   updateRecipe: (recipe: Recipe) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
-  toggleLike: (id: string, userId: string) => Promise<void>;
-  addComment: (id: string, comment: Omit<Comment, 'id' | 'createdAt'>) => Promise<void>;
+  toggleLike: (id: string, user: { userId: string, userName: string, userPhotoURL: string | null }) => Promise<void>;
+  addComment: (recipeId: string, comment: Omit<Comment, 'id' | 'createdAt'>, parentId?: string) => Promise<void>;
   recordView: (id: string, userId: string) => Promise<void>;
 }
 
