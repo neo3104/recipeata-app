@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
 import {
   Container,
   Box,
@@ -15,7 +14,6 @@ import {
 } from '@mui/material';
 
 function Profile() {
-  const { currentUser } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [storeName, setStoreName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -24,33 +22,17 @@ function Profile() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (currentUser) {
-      const fetchUserData = async () => {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          setDisplayName(userData.displayName || '');
-          setStoreName(userData.storeName || '');
-        }
-        setLoading(false);
-      };
-      fetchUserData();
-    }
-  }, [currentUser]);
+    setLoading(false);
+  }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      setError('You must be logged in to update a profile.');
-      return;
-    }
     setError('');
     setSuccess('');
     try {
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      await setDoc(userDocRef, { displayName, storeName }, { merge: true });
-      setSuccess('プロフィールを更新しました！');
+      // const userDocRef = doc(db, 'users', 'dummy-user-id');
+      // await setDoc(userDocRef, { displayName, storeName }, { merge: true });
+      setSuccess('プロフィールを更新しました！（ダミー処理）');
     } catch (err) {
       setError('プロフィールの更新に失敗しました。');
     }
@@ -64,7 +46,6 @@ function Profile() {
       setError("ログアウトに失敗しました。");
     }
   };
-
 
   if (loading) {
     return (
