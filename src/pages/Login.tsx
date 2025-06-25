@@ -15,6 +15,7 @@ import { useUser } from '../contexts/UserContext';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
 const Login: React.FC = () => {
+  const MASTER_SECRET = '3104'; // シークレット番号を変更
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -25,8 +26,6 @@ const Login: React.FC = () => {
   const [masterDialogOpen, setMasterDialogOpen] = useState(false);
   const [secretCode, setSecretCode] = useState('');
   const [masterError, setMasterError] = useState('');
-  const { user } = useUser();
-  const MASTER_SECRET = '3104'; // シークレット番号を変更
 
   const handleAnonymousLogin = async () => {
     setLoading(true);
