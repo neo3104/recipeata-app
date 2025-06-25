@@ -9,7 +9,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export interface User {
   id: string; // Firebase Auth UID
-  photoURL: string | null;
+  photoURL?: string;
   // Firestore-managed fields
   displayName: string; 
   store: string;
@@ -18,7 +18,7 @@ export interface User {
 interface UserContextType {
   user: User | null;
   loading: boolean;
-  updateUserProfile: (data: { displayName: string; store: string }) => Promise<void>;
+  updateUserProfile: (data: { displayName?: string; store?: string; photoURL?: string }) => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -59,7 +59,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
             const profile = docSnap.data();
             setUser({
               id: firebaseUser.uid,
-              photoURL: firebaseUser.photoURL,
+              photoURL: firebaseUser.photoURL ?? undefined,
               displayName: profile.displayName || '名無しさん',
               store: profile.store || '',
             });
@@ -74,7 +74,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
             console.log('[UserContext] 新規プロフィールをFirestoreに保存しました。');
             setUser({
               id: firebaseUser.uid,
-              photoURL: firebaseUser.photoURL, 
+              photoURL: firebaseUser.photoURL ?? undefined,
               ...newProfile,
             });
             console.log('[UserContext] 新規プロフィールでユーザー情報を更新しました。');
@@ -98,7 +98,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     }
   }, []);
 
-  const updateUserProfile = async (data: { displayName: string; store: string }) => {
+  const updateUserProfile = async (data: { displayName?: string; store?: string; photoURL?: string }) => {
     if (!user) return;
     const userRef = doc(db, 'users', user.id);
     await setDoc(userRef, data, { merge: true });

@@ -16,7 +16,7 @@ import {
   AccordionDetails,
   IconButton,
 } from '@mui/material';
-import { Close, ExpandMore, Notifications, ViewList, Search, Settings as SettingsIcon } from '@mui/icons-material';
+import { Close, ExpandMore, Notifications, NotificationsOff, ViewList, Search, Settings as SettingsIcon } from '@mui/icons-material';
 import { useSettings, type AppSettings } from '../contexts/SettingsContext';
 
 interface SettingsDialogProps {
@@ -58,12 +58,45 @@ const SettingsDialog = ({ open, onClose }: SettingsDialogProps) => {
               </Box>
             </AccordionSummary>
             <AccordionDetails>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <IconButton
+                  onClick={() => {
+                    handleSettingChange('notificationsEnabled', !settings.notificationsEnabled);
+                    if (settings.notificationsEnabled) {
+                      updateNotificationSettings({
+                        recipeAdded: false,
+                        recipeEdited: false,
+                        recipeLiked: false,
+                        recipeCommented: false,
+                      });
+                    } else {
+                      updateNotificationSettings({
+                        recipeAdded: true,
+                        recipeEdited: true,
+                        recipeLiked: true,
+                        recipeCommented: true,
+                      });
+                    }
+                  }}
+                  color={settings.notificationsEnabled ? 'primary' : 'default'}
+                  sx={{ mr: 1 }}
+                >
+                  <NotificationsOff />
+                </IconButton>
+                <Typography variant="subtitle1" sx={{ userSelect: 'none' }}>
+                  通知
+                  <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary', display: 'inline' }}>
+                    横の鈴のアイコンを押せば全ての通知を切れます
+                  </Typography>
+                </Typography>
+              </Box>
               <FormControlLabel
                 control={
                   <Switch
                     checked={settings.notifications.recipeAdded}
                     onChange={handleNotificationChange('recipeAdded')}
                     color="primary"
+                    disabled={!settings.notificationsEnabled}
                   />
                 }
                 label="レシピが追加されたとき通知"
@@ -74,6 +107,7 @@ const SettingsDialog = ({ open, onClose }: SettingsDialogProps) => {
                     checked={settings.notifications.recipeEdited}
                     onChange={handleNotificationChange('recipeEdited')}
                     color="primary"
+                    disabled={!settings.notificationsEnabled}
                   />
                 }
                 label="レシピが編集されたとき通知"
@@ -84,6 +118,7 @@ const SettingsDialog = ({ open, onClose }: SettingsDialogProps) => {
                     checked={settings.notifications.recipeLiked}
                     onChange={handleNotificationChange('recipeLiked')}
                     color="primary"
+                    disabled={!settings.notificationsEnabled}
                   />
                 }
                 label="レシピにいいねがついたとき通知"
@@ -94,6 +129,7 @@ const SettingsDialog = ({ open, onClose }: SettingsDialogProps) => {
                     checked={settings.notifications.recipeCommented}
                     onChange={handleNotificationChange('recipeCommented')}
                     color="primary"
+                    disabled={!settings.notificationsEnabled}
                   />
                 }
                 label="レシピにコメントがついたとき通知"
@@ -107,12 +143,12 @@ const SettingsDialog = ({ open, onClose }: SettingsDialogProps) => {
             <AccordionSummary expandIcon={<ExpandMore />}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ViewList />
-                <Typography variant="subtitle1">レシピ一覧設定</Typography>
+                <Typography variant="subtitle1">リスト表示設定</Typography>
               </Box>
             </AccordionSummary>
             <AccordionDetails>
               <Typography gutterBottom>
-                1ページあたりの表示件数: {settings.recipesPerPage}件
+                レシピ一覧 1ページあたり: {settings.recipesPerPage}件
               </Typography>
               <Slider
                 value={settings.recipesPerPage}
@@ -124,35 +160,70 @@ const SettingsDialog = ({ open, onClose }: SettingsDialogProps) => {
                 valueLabelDisplay="auto"
                 sx={{ mb: 2 }}
               />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.showRecipeImages}
-                    onChange={(e) => handleSettingChange('showRecipeImages', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="レシピ画像を表示"
+              <Typography gutterBottom>
+                マイページ作成レシピ 1ページあたり: {settings.myRecipesPerPage}件
+              </Typography>
+              <Slider
+                value={settings.myRecipesPerPage}
+                onChange={(_, value) => handleSettingChange('myRecipesPerPage', value)}
+                min={6}
+                max={24}
+                step={2}
+                marks
+                valueLabelDisplay="auto"
+                sx={{ mb: 2 }}
               />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.showRecipeTags}
-                    onChange={(e) => handleSettingChange('showRecipeTags', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="レシピタグを表示"
+              <Typography gutterBottom>
+                操作履歴 1ページあたり: {settings.historyPerPage}件
+              </Typography>
+              <Slider
+                value={settings.historyPerPage}
+                onChange={(_, value) => handleSettingChange('historyPerPage', value)}
+                min={5}
+                max={30}
+                step={5}
+                marks
+                valueLabelDisplay="auto"
+                sx={{ mb: 2 }}
               />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.showRecipeAuthor}
-                    onChange={(e) => handleSettingChange('showRecipeAuthor', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="投稿者情報を表示"
+              <Typography gutterBottom>
+                コメント 1ページあたり: {settings.commentsPerPage}件
+              </Typography>
+              <Slider
+                value={settings.commentsPerPage}
+                onChange={(_, value) => handleSettingChange('commentsPerPage', value)}
+                min={5}
+                max={30}
+                step={5}
+                marks
+                valueLabelDisplay="auto"
+                sx={{ mb: 2 }}
+              />
+              <Typography gutterBottom>
+                タグ一覧 1ページあたり: {settings.tagsPerPage}件
+              </Typography>
+              <Slider
+                value={settings.tagsPerPage}
+                onChange={(_, value) => handleSettingChange('tagsPerPage', value)}
+                min={10}
+                max={50}
+                step={5}
+                marks
+                valueLabelDisplay="auto"
+                sx={{ mb: 2 }}
+              />
+              <Typography gutterBottom>
+                通知履歴 1ページあたり: {settings.notificationsPerPage}件
+              </Typography>
+              <Slider
+                value={settings.notificationsPerPage}
+                onChange={(_, value) => handleSettingChange('notificationsPerPage', value)}
+                min={5}
+                max={30}
+                step={5}
+                marks
+                valueLabelDisplay="auto"
+                sx={{ mb: 2 }}
               />
             </AccordionDetails>
           </Accordion>

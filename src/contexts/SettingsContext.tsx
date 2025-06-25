@@ -11,8 +11,15 @@ export interface NotificationSettings {
 export interface AppSettings {
   // 通知設定
   notifications: NotificationSettings;
+  notificationsEnabled: boolean;
   // レシピ一覧設定
   recipesPerPage: number;
+  // 各リストのページネーション件数
+  myRecipesPerPage: number;
+  historyPerPage: number;
+  commentsPerPage: number;
+  tagsPerPage: number;
+  notificationsPerPage: number;
   // 表示設定
   showRecipeImages: boolean;
   showRecipeTags: boolean;
@@ -39,7 +46,13 @@ const defaultSettings: AppSettings = {
     recipeLiked: true,
     recipeCommented: true,
   },
+  notificationsEnabled: true,
   recipesPerPage: 12,
+  myRecipesPerPage: 10,
+  historyPerPage: 10,
+  commentsPerPage: 10,
+  tagsPerPage: 20,
+  notificationsPerPage: 10,
   showRecipeImages: true,
   showRecipeTags: true,
   showRecipeAuthor: true,

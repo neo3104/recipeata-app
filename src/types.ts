@@ -1,4 +1,4 @@
-import type { Timestamp } from 'firebase/firestore';
+// import type { Timestamp } from 'firebase/firestore';
 
 export interface Ingredient {
   name: string;
@@ -21,7 +21,8 @@ export interface Comment {
   userId: string;
   createdBy: {
     name: string;
-    photoURL: string | null;
+    photoURL?: string;
+    store?: string;
   };
   text: string;
   createdAt: Date;
@@ -31,7 +32,7 @@ export interface Comment {
 export interface Like {
   userId: string;
   userName: string;
-  userPhotoURL: string | null;
+  userPhotoURL?: string;
 }
 
 export interface Recipe {
@@ -45,7 +46,7 @@ export interface Recipe {
   createdById: string;
   createdBy: {
     name: string;
-    photoURL: string | null;
+    photoURL?: string;
     store?: string;
   };
   createdAt: Date;
@@ -57,6 +58,8 @@ export interface Recipe {
   cookingTime: number;
   servings: number;
   viewedAt?: { [key: string]: Date };
+  total?: string;
+  history?: any[]; // HistoryEntry[]型にしたいが、循環参照防止のためany[]で仮対応
 }
 
 export interface RecipeContextType {
@@ -66,7 +69,7 @@ export interface RecipeContextType {
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt' | 'likes' | 'comments' | 'viewedAt'>) => Promise<string>;
   updateRecipe: (recipe: Recipe) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
-  toggleLike: (id: string, user: { userId: string, userName: string, userPhotoURL: string | null }) => Promise<void>;
+  toggleLike: (id: string, user: { userId: string, userName: string, userPhotoURL?: string }) => Promise<void>;
   addComment: (recipeId: string, comment: Omit<Comment, 'id' | 'createdAt'>, parentId?: string) => Promise<void>;
   recordView: (id: string, userId: string) => Promise<void>;
 }

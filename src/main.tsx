@@ -11,6 +11,7 @@ import AddRecipe from './pages/AddRecipe.tsx';
 import RecipeDetail from './pages/RecipeDetail.tsx';
 import EditRecipe from './pages/EditRecipe.tsx';
 import MyPage from './pages/MyPage.tsx';
+import TagList from './pages/TagList.tsx';
 
 const router = createBrowserRouter([
   {
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
               {
                 path: 'mypage',
                 element: <MyPage />,
+              },
+              {
+                path: 'tags',
+                element: <TagList />,
               },
             ],
           },

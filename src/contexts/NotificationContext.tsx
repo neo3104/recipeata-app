@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Snackbar, Alert } from '@mui/material';
+import { useSettings } from './SettingsContext';
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
@@ -10,12 +11,23 @@ export interface NotificationHistory {
   type: NotificationType;
   timestamp: number;
   read: boolean;
+  details?: {
+    action: string; // 'like', 'comment', 'recipe_add', 'recipe_edit', 'recipe_delete', 'profile_edit'
+    recipeId?: string;
+    recipeTitle?: string;
+    commentText?: string;
+    userId?: string;
+    userName?: string;
+    userStore?: string;
+    additionalInfo?: any;
+  };
 }
 
 interface NotificationContextType {
-  showNotification: (message: string, type?: NotificationType) => void;
+  showNotification: (message: string, type?: NotificationType, details?: NotificationHistory['details']) => void;
   notificationHistory: NotificationHistory[];
   markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
   clearHistory: () => void;
   unreadCount: number;
 }
@@ -24,6 +36,7 @@ const NotificationContext = createContext<NotificationContextType>({
   showNotification: () => {},
   notificationHistory: [],
   markAsRead: () => {},
+  markAllAsRead: () => {},
   clearHistory: () => {},
   unreadCount: 0,
 });
@@ -35,6 +48,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [message, setMessage] = useState('');
   const [type, setType] = useState<NotificationType>('info');
   const [notificationHistory, setNotificationHistory] = useState<NotificationHistory[]>([]);
+  const { settings } = useSettings();
 
   // 未読数を計算
   const unreadCount = notificationHistory.filter(n => !n.read).length;
@@ -52,7 +66,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('recipeata-notifications', JSON.stringify(history));
   };
 
-  const showNotification = (msg: string, t: NotificationType = 'info') => {
+  const showNotification = (msg: string, t: NotificationType = 'info', details?: NotificationHistory['details']) => {
+    if (!settings.notificationsEnabled) return;
     setMessage(msg);
     setType(t);
     setOpen(true);
@@ -64,6 +79,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       type: t,
       timestamp: Date.now(),
       read: false,
+      details,
     };
 
     setNotificationHistory(prev => {
@@ -78,6 +94,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       const updated = prev.map(n => 
         n.id === id ? { ...n, read: true } : n
       );
+      saveHistory(updated);
+      return updated;
+    });
+  };
+
+  const markAllAsRead = () => {
+    setNotificationHistory(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
       saveHistory(updated);
       return updated;
     });
@@ -98,6 +122,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       showNotification, 
       notificationHistory, 
       markAsRead, 
+      markAllAsRead,
       clearHistory, 
       unreadCount 
     }}>

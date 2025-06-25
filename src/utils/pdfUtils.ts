@@ -112,18 +112,20 @@ export const generateRecipePDF = async (recipe: Recipe, elementRef: HTMLDivEleme
     // 少し待ってからキャンバスに変換（スタイル適用のため）
     await new Promise(resolve => setTimeout(resolve, 100));
 
+    // DOMサイズ取得
+    const rect = elementRef.getBoundingClientRect();
     // HTML要素をキャンバスに変換
     const canvas = await html2canvas(elementRef, {
-      scale: 2, // 高解像度で出力
+      scale: 2, // 高解像度でキャプチャ
       useCORS: true, // 外部画像の読み込みを許可
       allowTaint: true, // 外部画像の使用を許可
       backgroundColor: '#ffffff',
-      width: 210, // A4幅（mm）
-      height: 297, // A4高さ（mm）
+      width: rect.width,
+      height: rect.height,
       scrollX: 0,
       scrollY: 0,
-      windowWidth: 210,
-      windowHeight: 297
+      windowWidth: rect.width,
+      windowHeight: rect.height
     });
 
     // キャンバスを画像に変換
@@ -132,11 +134,10 @@ export const generateRecipePDF = async (recipe: Recipe, elementRef: HTMLDivEleme
     // PDFを作成
     const pdf = new jsPDF('p', 'mm', 'a4');
     
-    // 画像をPDFに追加（A4サイズに合わせる）
-    const imgWidth = 210; // A4幅
-    const imgHeight = 297; // A4高さ
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    // A4サイズにリサイズして貼り付け
+    const pdfWidth = 210;
+    const pdfHeight = 297;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
     // PDFをダウンロード
     const fileName = `${recipe.title.replace(/[^\w\s]/gi, '')}_recipe.pdf`;
@@ -175,4 +176,65 @@ export const waitForImages = (element: HTMLElement): Promise<void> => {
       }
     });
   });
-}; 
+};
+
+// --- 追加: 情報量に応じた自動レイアウト計算 ---
+export function getAutoLayoutConfig(recipe: any) {
+  // 各要素数をカウント
+  const numIngredients = recipe.ingredients?.length || 0;
+  const numSteps = recipe.steps?.length || 0;
+  const numImages = (recipe.mainImageUrl ? 1 : 0) + (recipe.steps?.filter((s:any)=>s.imageUrl).length || 0);
+  const descLen = recipe.description ? recipe.description.length : 0;
+  const totalItems = numIngredients + numSteps + numImages + (descLen > 0 ? 1 : 0);
+
+  // デフォルト値
+  let titleFontSize = 28;
+  let descriptionFontSize = 14;
+  let sectionFontSize = 18;
+  let bodyFontSize = 12;
+  let mainImageHeight = 80;
+  let stepImageHeight = 50;
+  let padding = 24;
+  let spacing = 12;
+
+  // 情報量が多いほど縮小
+  if (totalItems > 20 || descLen > 400) {
+    titleFontSize = 18;
+    descriptionFontSize = 10;
+    sectionFontSize = 12;
+    bodyFontSize = 8;
+    mainImageHeight = 36;
+    stepImageHeight = 24;
+    padding = 8;
+    spacing = 4;
+  } else if (totalItems > 15 || descLen > 250) {
+    titleFontSize = 20;
+    descriptionFontSize = 11;
+    sectionFontSize = 14;
+    bodyFontSize = 10;
+    mainImageHeight = 48;
+    stepImageHeight = 32;
+    padding = 12;
+    spacing = 6;
+  } else if (totalItems > 10 || descLen > 120) {
+    titleFontSize = 24;
+    descriptionFontSize = 12;
+    sectionFontSize = 16;
+    bodyFontSize = 11;
+    mainImageHeight = 60;
+    stepImageHeight = 40;
+    padding = 16;
+    spacing = 8;
+  }
+
+  return {
+    titleFontSize,
+    descriptionFontSize,
+    sectionFontSize,
+    bodyFontSize,
+    mainImageHeight,
+    stepImageHeight,
+    padding,
+    spacing,
+  };
+} 
