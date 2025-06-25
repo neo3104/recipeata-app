@@ -155,16 +155,23 @@ const MyPage = () => {
   const handleImageUpload = async () => {
     if (!selectedImage || !user) return;
     try {
-      // ここではBase64変換で簡易実装（本番はCloud Storage推奨）
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        await updateUserProfile({ photoURL: base64 });
-        setPreviewUrl(base64);
+      // Cloudinaryへアップロード
+      const formData = new FormData();
+      formData.append('file', selectedImage);
+      formData.append('upload_preset', 'unsigned_preset'); // ←Cloudinaryの設定に合わせて
+      const res = await fetch('https://api.cloudinary.com/v1_1/dyxdpmzia/image/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        await updateUserProfile({ photoURL: data.secure_url });
+        setPreviewUrl(data.secure_url);
         setSelectedImage(null);
         alert('プロフィール画像を更新しました');
-      };
-      reader.readAsDataURL(selectedImage);
+      } else {
+        alert('画像アップロードに失敗しました');
+      }
     } catch (error) {
       alert('画像のアップロードに失敗しました');
     }

@@ -195,7 +195,8 @@ function RecipeDetail() {
 
   const isAuthor = user && recipe.createdById === user.id;
   const isSameStore = user && recipe.createdBy?.store && user.store && recipe.createdBy.store === user.store;
-  const canEdit = isAuthor || isSameStore;
+  const isMaster = user?.role === 'master';
+  const canEdit = isAuthor || isSameStore || isMaster;
 
   const hasLiked = user?.id ? recipe.likes.some(like => like.userId === user.id) : false;
 
@@ -571,7 +572,7 @@ function RecipeDetail() {
               onClose={() => setLikesAnchorEl(null)}
             >
               {likes.length > 0 ? (
-                likes.map((like, idx) => (
+                likes.map((like: any, idx: number) => (
                   <MenuItem key={like.userId} onClick={() => setLikesAnchorEl(null)}>
                     <ListItemIcon>
                       <Avatar src={like.userPhotoURL} sx={{ width: 24, height: 24 }} />

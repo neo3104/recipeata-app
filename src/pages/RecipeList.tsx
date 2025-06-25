@@ -140,60 +140,111 @@ export default function RecipeList() {
   }, [searchTerm, authorSearch, storeSearch, tagSearch, showFavoritesOnly]);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4, pt: undefined, pb: undefined, background: 'transparent' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, mt: 0, background: 'transparent' }}>
-        <Typography 
-          variant="h3" 
-          component="h1" 
+    <Container maxWidth="lg" sx={{ py: 4, pt: undefined, pb: undefined }}>
+      {/* タイトル・ユーザー情報部分だけ背景画像 */}
+      <Box sx={{
+        position: 'relative',
+        width: '100%',
+        minHeight: 180,
+        mb: 4,
+        borderRadius: 4,
+        overflow: 'hidden',
+      }}>
+        {/* 背景画像 */}
+        <Box
           sx={{
-            fontWeight: 'bold',
-            background: (theme) => 
-              `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            display: 'inline-block',
-            m: 0,
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: 'url(https://images.pexels.com/photos/461382/pexels-photo-461382.jpeg?auto=compress&w=1500&q=80)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center center',
+            zIndex: 0,
           }}
-        >
-          レシピ一覧
-        </Typography>
-        <RestaurantMenuIcon sx={{ fontSize: 36, color: 'primary.main', mx: 2 }} />
-        {user && (
-          <Paper 
-            elevation={2} 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 1.5, 
-              p: 1.5, 
+        />
+        {/* オーバーレイ */}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, rgba(0,0,0,0.18) 0%, rgba(255,183,77,0.10) 100%)',
+            zIndex: 1,
+          }}
+        />
+        {/* タイトル・ユーザー情報 */}
+        <Box sx={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', height: 180, px: 4 }}>
+          <Paper
+            elevation={2}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              px: 3,
+              py: 1.5,
               borderRadius: 2,
-              backgroundColor: 'transparent',
+              backgroundColor: 'rgba(255,255,255,0.7)',
               m: 0,
-              minWidth: 120,
+              minWidth: 180,
               flexShrink: 0,
+              mr: 2,
             }}
           >
-            <Avatar 
-              sx={{ 
-                width: 40, 
-                height: 40,
-                bgcolor: 'grey.400',
-                '& .MuiSvgIcon-root': {
-                  color: 'white',
-                },
-              }} 
-              src={user.photoURL || undefined} 
-            />
-            <Box>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', m: 0 }}>
-                {user.displayName}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ m: 0 }}>
-                {user.store}
-              </Typography>
-            </Box>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              sx={{
+                fontWeight: 'bold',
+                background: (theme) => 
+                  `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.light} 90%)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                display: 'inline-block',
+                m: 0,
+              }}
+            >
+              レシピ一覧
+            </Typography>
+            <RestaurantMenuIcon sx={{ fontSize: 36, color: 'primary.main', mx: 2 }} />
           </Paper>
-        )}
+          {user && (
+            <Paper 
+              elevation={2} 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1.5, 
+                p: 1.5, 
+                borderRadius: 2,
+                backgroundColor: 'rgba(255,255,255,0.7)',
+                m: 0,
+                minWidth: 120,
+                flexShrink: 0,
+              }}
+            >
+              <Avatar 
+                sx={{ 
+                  width: 40, 
+                  height: 40,
+                  bgcolor: 'grey.400',
+                  '& .MuiSvgIcon-root': {
+                    color: 'white',
+                  },
+                }} 
+                src={user.photoURL || undefined} 
+              />
+              <Box>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', m: 0 }}>
+                  {user.displayName}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ m: 0 }}>
+                  {user.store}
+                </Typography>
+              </Box>
+            </Paper>
+          )}
+        </Box>
       </Box>
       <Typography variant="subtitle1" sx={{ color: 'text.secondary', mt: 1, ml: 1 }}>
         みんなのレシピを探そう！

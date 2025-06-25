@@ -13,6 +13,7 @@ export interface User {
   // Firestore-managed fields
   displayName: string; 
   store: string;
+  role?: string;
 }
 
 interface UserContextType {
@@ -62,6 +63,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
               photoURL: firebaseUser.photoURL ?? undefined,
               displayName: profile.displayName || '名無しさん',
               store: profile.store || '',
+              role: profile.role || undefined,
             });
             console.log('[UserContext] 既存プロフィールでユーザー情報を更新しました。');
           } else {
@@ -76,6 +78,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
               id: firebaseUser.uid,
               photoURL: firebaseUser.photoURL ?? undefined,
               ...newProfile,
+              role: undefined,
             });
             console.log('[UserContext] 新規プロフィールでユーザー情報を更新しました。');
           }

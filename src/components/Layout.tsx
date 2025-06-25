@@ -15,6 +15,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import { Avatar, Menu, MenuItem, ThemeProvider, CssBaseline } from '@mui/material';
 import theme from '../theme';
+import { auth } from '../firebase';
 
 import { useNotification } from '../contexts/NotificationContext';
 import NotificationHistory from './NotificationHistory';
@@ -54,6 +55,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const handleAddRecipe = () => {
     navigate('/add');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      navigate('/');
+      handleClose();
+    } catch (error) {
+      alert('ログアウトに失敗しました');
+    }
   };
 
   return (
@@ -128,7 +139,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   onClose={handleClose}
                 >
                   <MenuItem onClick={handleMyPage}>マイページ</MenuItem>
-                  {/* <MenuItem>ログアウト</MenuItem> */}
+                  <MenuItem onClick={handleLogout}>ログアウト</MenuItem>
                 </Menu>
               </div>
             </Toolbar>

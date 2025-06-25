@@ -144,8 +144,8 @@ const RecipePDF = forwardRef<HTMLDivElement, RecipePDFProps>(({ recipe }, ref) =
                     display: 'flex', 
                     alignItems: 'center', 
                     fontSize: '1.05rem',
-                    position: 'relative',
-                    minHeight: '1.8em'
+                    minHeight: '1.8em',
+                    width: '100%',
                   }}
                 >
                   <CheckCircle 
@@ -155,17 +155,8 @@ const RecipePDF = forwardRef<HTMLDivElement, RecipePDFProps>(({ recipe }, ref) =
                       mr: 1 
                     }} 
                   />
-                  <Typography sx={{ flex: 1 }}>{ing.name}</Typography>
-                  <Typography sx={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    color: '#666',
-                    whiteSpace: 'nowrap',
-                    fontSize: '1.05rem',
-                    pointerEvents: 'none'
-                  }}>{ing.quantity}</Typography>
+                  <Typography sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ing.name}</Typography>
+                  <Typography sx={{ color: '#666', whiteSpace: 'nowrap', fontSize: '1.05rem', ml: 2, flexShrink: 0 }}>{ing.quantity}</Typography>
                 </Box>
               )
             ))}

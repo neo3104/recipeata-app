@@ -341,6 +341,12 @@ const AddRecipe: React.FC = () => {
             onChange={(e) => setDescription(e.target.value)}
             margin="normal"
             sx={{ bgcolor: '#fff' }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.stopPropagation();
+                e.preventDefault();
+              }
+            }}
           />
           <TextField
             label="タグ (例: 簡単, ヘルシー, お弁当)"
@@ -414,6 +420,12 @@ const AddRecipe: React.FC = () => {
                     value={step.description}
                     onChange={(e) => handleStepChange(index, e.target.value)}
                     sx={{ bgcolor: '#fff' }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }
+                    }}
                   />
                   <IconButton onClick={() => handleRemoveStep(index)}>
                     <RemoveCircleOutline />

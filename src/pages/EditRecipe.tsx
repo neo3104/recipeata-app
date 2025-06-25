@@ -67,8 +67,9 @@ const EditRecipe: React.FC = () => {
     if (targetRecipe) {
       const isAuthor = user && targetRecipe.createdById === user.id;
       const isSameStore = user && targetRecipe.createdBy?.store && user.store && targetRecipe.createdBy.store === user.store;
+      const isMaster = user && user.role === 'master';
       
-      if (!isAuthor && !isSameStore) {
+      if (!isAuthor && !isSameStore && !isMaster) {
         setError("このレシピを編集する権限がありません。");
         setIsLoading(false);
         return;
