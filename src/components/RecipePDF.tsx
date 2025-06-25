@@ -9,7 +9,6 @@ interface RecipePDFProps {
 }
 
 const RecipePDF = forwardRef<HTMLDivElement, RecipePDFProps>(({ recipe }, ref) => {
-  const layout = getAutoLayoutConfig(recipe);
   const formatDate = (date: Date) => date.toLocaleString('ja-JP');
 
   // steps配列の中身をデバッグ出力

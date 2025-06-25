@@ -7,7 +7,7 @@ import { useUndoRedo } from '../contexts/UndoRedoContext';
 import { useUndoRedoProgress } from '../contexts/UndoRedoProgressContext';
 import { generateRecipePDF, waitForImages } from '../utils/pdfUtils';
 import RecipePDF from '../components/RecipePDF';
-import type { Comment, Like } from '../types';
+import type { Comment } from '../types';
 import {
   Container,
   Typography,
@@ -572,7 +572,7 @@ function RecipeDetail() {
               onClose={() => setLikesAnchorEl(null)}
             >
               {likes.length > 0 ? (
-                likes.map((like: any, idx: number) => (
+                likes.map((like: any) => (
                   <MenuItem key={like.userId} onClick={() => setLikesAnchorEl(null)}>
                     <ListItemIcon>
                       <Avatar src={like.userPhotoURL} sx={{ width: 24, height: 24 }} />
