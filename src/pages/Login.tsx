@@ -28,6 +28,10 @@ const Login: React.FC = () => {
     navigate('/', { replace: true });
   };
 
+  const handleSkip = () => {
+    navigate('/', { replace: true });
+  };
+
   return (
     <Box
       sx={{
@@ -118,6 +122,15 @@ const Login: React.FC = () => {
               sx={{ mt: 3, fontWeight: 700, fontSize: '1.1rem' }}
             >
               保存してはじめる
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              fullWidth
+              sx={{ mt: 2, fontWeight: 700, fontSize: '1.1rem' }}
+              onClick={handleSkip}
+            >
+              アプリに入る（ログインせずに進む）
             </Button>
           </Box>
         </Paper>

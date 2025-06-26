@@ -17,11 +17,9 @@ export interface Step {
 }
 
 export interface Comment {
-  id: string;
-  userId: string;
+  id?: string;
   createdBy: {
     name: string;
-    photoURL?: string;
     store?: string;
   };
   text: string;
@@ -30,9 +28,7 @@ export interface Comment {
 }
 
 export interface Like {
-  userId: string;
   userName: string;
-  userPhotoURL?: string;
 }
 
 export interface Recipe {
@@ -69,12 +65,13 @@ export interface RecipeContextType {
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt' | 'likes' | 'comments' | 'viewedAt'>) => Promise<string>;
   updateRecipe: (recipe: Recipe) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
-  toggleLike: (id: string, user: { userId: string, userName: string, userPhotoURL?: string }) => Promise<void>;
+  toggleLike: (id: string, user: { userName: string }) => Promise<void>;
   addComment: (recipeId: string, comment: Omit<Comment, 'id' | 'createdAt'>, parentId?: string) => Promise<void>;
-  recordView: (id: string, userId: string) => Promise<void>;
+  recordView: (id: string) => Promise<void>;
 }
 
 export interface User {
+  name: string;
   store: string;
 }
 
