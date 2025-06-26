@@ -223,20 +223,9 @@ export default function RecipeList() {
                 flexShrink: 0,
               }}
             >
-              <Avatar 
-                sx={{ 
-                  width: 40, 
-                  height: 40,
-                  bgcolor: 'grey.400',
-                  '& .MuiSvgIcon-root': {
-                    color: 'white',
-                  },
-                }} 
-                src={user.photoURL || undefined} 
-              />
               <Box>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', m: 0 }}>
-                  {user.displayName}
+                  {user.name}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ m: 0 }}>
                   {user.store}

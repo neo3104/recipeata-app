@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { useUser } from '../contexts/UserContext';
 import {
   Container,
   Box,
@@ -10,50 +8,31 @@ import {
   Typography,
   Paper,
   Alert,
-  CircularProgress,
 } from '@mui/material';
 
 function Profile() {
-  const [displayName, setDisplayName] = useState('');
-  const [storeName, setStoreName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { user, updateUserProfile } = useUser();
+  const [name, setName] = useState(user?.name || '');
+  const [store, setStore] = useState(user?.store || '');
   const [success, setSuccess] = useState('');
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    setName(user?.name || '');
+    setStore(user?.store || '');
+  }, [user]);
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
+  const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    try {
-      // const userDocRef = doc(db, 'users', 'dummy-user-id');
-      // await setDoc(userDocRef, { displayName, storeName }, { merge: true });
-      setSuccess('プロフィールを更新しました！（ダミー処理）');
-    } catch (err) {
-      setError('プロフィールの更新に失敗しました。');
+    if (!name.trim() || !store.trim()) {
+      setError('ユーザー名と所属店舗を入力してください');
+      return;
     }
+    updateUserProfile({ name, store });
+    setSuccess('プロフィールを更新しました！');
   };
-  
-  const handleLogout = async () => {
-    try {
-      await auth.signOut();
-      navigate('/');
-    } catch (error) {
-      setError("ログアウトに失敗しました。");
-    }
-  };
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Container component="main" maxWidth="sm">
@@ -65,20 +44,20 @@ function Profile() {
           <TextField
             margin="normal"
             fullWidth
-            id="displayName"
-            label="表示名"
-            name="displayName"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            id="name"
+            label="ユーザー名"
+            name="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
           <TextField
             margin="normal"
             fullWidth
-            name="storeName"
+            name="store"
             label="所属店舗名"
-            id="storeName"
-            value={storeName}
-            onChange={(e) => setStoreName(e.target.value)}
+            id="store"
+            value={store}
+            onChange={(e) => setStore(e.target.value)}
           />
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
           {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
@@ -89,13 +68,6 @@ function Profile() {
             sx={{ mt: 3, mb: 2 }}
           >
             プロフィールを更新
-          </Button>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={handleLogout}
-          >
-            ログアウト
           </Button>
         </Box>
       </Paper>

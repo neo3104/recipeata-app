@@ -196,21 +196,20 @@ const EditRecipe: React.FC = () => {
         id,
         recipeToUpdate,
         {
-          name: user.displayName || '',
+          name: user.name || '',
           store: user.store || '',
-          userId: user.id || '',
         },
         `タイトル: ${recipe.title} → ${title}\n説明: ${recipe.description} → ${description}`
       );
 
       // 通知
       if (settings.notifications.recipeEdited) {
-        showNotification(`${user.store || '未所属'}の${user.displayName || '名無しさん'}さんが「${title}」を編集しました`, 'success', {
+        showNotification(`${user.store || '未所属'}の${user.name || '名無しさん'}さんが「${title}」を編集しました`, 'success', {
           action: 'recipe_edit',
           recipeId: id,
           recipeTitle: title,
           userId: user.id,
-          userName: user.displayName,
+          userName: user.name,
           userStore: user.store
         });
       }
@@ -247,9 +246,8 @@ const EditRecipe: React.FC = () => {
               id,
               originalRecipe,
               {
-                name: user.displayName || '',
+                name: user.name || '',
                 store: user.store || '',
-                userId: user.id || '',
               },
               '編集を元に戻す'
             );
@@ -265,9 +263,8 @@ const EditRecipe: React.FC = () => {
               id,
               recipeToUpdate,
               {
-                name: user.displayName || '',
+                name: user.name || '',
                 store: user.store || '',
-                userId: user.id || '',
               },
               '編集を再適用'
             );

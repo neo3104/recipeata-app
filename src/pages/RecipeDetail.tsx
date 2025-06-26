@@ -207,17 +207,17 @@ function RecipeDetail() {
     const alreadyLiked = recipeObj.likes.some(like => like.userId === user.id);
     if (toggleLike) toggleLike(id, {
       userId: user.id,
-      userName: user.displayName,
+      userName: user.name,
       userPhotoURL: user.photoURL
     });
     // 通知
     if (settings.notifications.recipeLiked && user) {
-      showNotification(`${user.store || '未所属'}の${user.displayName || '名無しさん'}さんが「${recipeObj.title}」に${alreadyLiked ? 'いいねを解除しました' : 'いいねしました'}`, 'info', {
+      showNotification(`${user.store || '未所属'}の${user.name || '名無しさん'}さんが「${recipeObj.title}」に${alreadyLiked ? 'いいねを解除しました' : 'いいねしました'}`, 'info', {
         action: 'like',
         recipeId: id,
         recipeTitle: recipeObj.title,
         userId: user.id,
-        userName: user.displayName,
+        userName: user.name,
         userStore: user.store,
         additionalInfo: { isLike: !alreadyLiked }
       });
@@ -229,13 +229,13 @@ function RecipeDetail() {
         recipeId: id,
         recipeTitle: recipeObj.title,
         userId: user.id,
-        userName: user.displayName,
+        userName: user.name,
         action: alreadyLiked ? 'unlike' : 'like'
       },
       undo: async () => {
         if (toggleLike) toggleLike(id, {
           userId: user.id,
-          userName: user.displayName,
+          userName: user.name,
           userPhotoURL: user.photoURL
         });
         setStatus('like', '完了');
@@ -243,7 +243,7 @@ function RecipeDetail() {
       redo: async () => {
         if (toggleLike) toggleLike(id, {
           userId: user.id,
-          userName: user.displayName,
+          userName: user.name,
           userPhotoURL: user.photoURL
         });
       },
@@ -258,7 +258,7 @@ function RecipeDetail() {
       text: text.trim(),
       userId: user.id,
       createdBy: {
-        name: user.displayName,
+        name: user.name,
         photoURL: user.photoURL,
       },
     };
@@ -270,13 +270,13 @@ function RecipeDetail() {
     
     // 通知
     if (settings.notifications.recipeCommented && user) {
-      showNotification(`${user.store || '未所属'}の${user.displayName || '名無しさん'}さんが「${recipe.title}」にコメントしました`, 'info', {
+      showNotification(`${user.store || '未所属'}の${user.name || '名無しさん'}さんが「${recipe.title}」にコメントしました`, 'info', {
         action: 'comment',
         recipeId: id,
         recipeTitle: recipe.title,
         commentText: text,
         userId: user.id,
-        userName: user.displayName,
+        userName: user.name,
         userStore: user.store
       });
     }
@@ -328,12 +328,12 @@ function RecipeDetail() {
             
             // 通知
             if (settings.notifications.recipeEdited && user) {
-              showNotification(`${user.store || '未所属'}の${user.displayName || '名無しさん'}さんが「${recipe.title}」を削除しました`, 'success', {
+              showNotification(`${user.store || '未所属'}の${user.name || '名無しさん'}さんが「${recipe.title}」を削除しました`, 'success', {
                 action: 'recipe_delete',
                 recipeId: id,
                 recipeTitle: recipe.title,
                 userId: user.id,
-                userName: user.displayName,
+                userName: user.name,
                 userStore: user.store
               });
             }
@@ -645,11 +645,11 @@ function RecipeDetail() {
         <DialogContent>
           {(recipe.history || [])
             .filter((h: any) => h.diff && (typeof h.diff !== 'object' || Object.keys(h.diff).length > 0))
-            .map((h: any, idx: number) => {
+            .map((h: any) => {
               const d = h.diff;
               const isObj = typeof d === 'object' && d !== null;
               return (
-                <Box key={h.id || h.editedAt?.toMillis?.() || idx} sx={{ mb: 2, p: 2, border: '1px solid #eee', borderRadius: 2 }}>
+                <Box key={h.id || h.editedAt?.toMillis?.()} sx={{ mb: 2, p: 2, border: '1px solid #eee', borderRadius: 2 }}>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
                     {h.editedBy?.store} / {h.editedBy?.name}（{h.editedAt && typeof h.editedAt.toDate === 'function' ? h.editedAt.toDate().toLocaleString() : ''}）
                   </Typography>
@@ -719,7 +719,7 @@ function RecipeDetail() {
                     <Button variant="outlined" size="small" onClick={()=>{setSnapshotRecipe(h.snapshot);setSnapshotOpen(true);}}>この状態のレシピを見る</Button>
                     <Button variant="outlined" size="small" color="secondary" onClick={async () => {
                       if (!recipeContext || !id) return;
-                      await recipeContext.updateRecipe(id, h.snapshot, user ? { name: user.displayName, store: user.store, userId: user.id } : undefined, 'ロールバック');
+                      await recipeContext.updateRecipe(id, h.snapshot, user ? { name: user.name, store: user.store, userId: user.id } : undefined, 'ロールバック');
                       setHistoryOpen(false);
                     }}>この状態に戻す</Button>
                   </Box>

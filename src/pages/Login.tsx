@@ -1,98 +1,31 @@
-import React, { useState } from 'react';
-import { Box, Button, Typography, Container, Paper, CircularProgress, Alert, TextField } from '@mui/material';
-import { signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
-import { useLocation, useNavigate } from 'react-router-dom';
-import GoogleIcon from '@mui/icons-material/Google';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Input from '@mui/material/Input';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { useUser } from '../contexts/UserContext';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import React, { useState, useEffect } from 'react';
+import { Box, Button, Typography, Container, Paper, TextField } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+
+const LOCAL_STORAGE_KEY = 'recipeata-user-info';
 
 const Login: React.FC = () => {
-  const MASTER_SECRET = '3104'; // シークレット番号を変更
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [masterDialogOpen, setMasterDialogOpen] = useState(false);
-  const [secretCode, setSecretCode] = useState('');
-  const [masterError, setMasterError] = useState('');
+  const [name, setName] = useState('');
+  const [store, setStore] = useState('');
+  const [error, setError] = useState('');
 
-  const handleAnonymousLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await signInAnonymously(auth);
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      console.error('Anonymous login error:', err);
-      setError(`ログインに失敗しました。Firebaseの接続設定を確認してください。(エラー: ${err.code})`);
-      setLoading(false);
+  // 2回目以降はlocalStorageから自動取得し、スキップ
+  useEffect(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      navigate('/', { replace: true });
     }
-  };
+  }, [navigate]);
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(`Googleログインに失敗しました。(エラー: ${err.code})`);
-      setLoading(false);
-    }
-  };
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(`メールアドレスログインに失敗しました。(エラー: ${err.code})`);
-      setLoading(false);
+    if (!name.trim() || !store.trim()) {
+      setError('ユーザー名と所属店舗を入力してください');
+      return;
     }
-  };
-
-  const handleOpenMasterDialog = () => {
-    setMasterDialogOpen(true);
-    setSecretCode('');
-    setMasterError('');
-  };
-
-  const handleCloseMasterDialog = () => {
-    setMasterDialogOpen(false);
-    setSecretCode('');
-    setMasterError('');
-  };
-
-  const handleMasterLogin = async () => {
-    if (secretCode === MASTER_SECRET) {
-      try {
-        // 匿名認証でログイン
-        const cred = await signInAnonymously(auth);
-        const masterUser = cred.user;
-        await setDoc(doc(db, 'users', masterUser.uid), { role: 'master', displayName: 'マスター', store: '全店舗', photoURL: masterUser.photoURL || '' }, { merge: true });
-        setMasterDialogOpen(false);
-        alert('マスター権限でログインしました！');
-        navigate(from, { replace: true });
-      } catch (err) {
-        setMasterError('マスター認証に失敗しました');
-      }
-    } else {
-      setMasterError('シークレット番号が違います');
-    }
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ name, store }));
+    navigate('/', { replace: true });
   };
 
   return (
@@ -154,146 +87,41 @@ const Login: React.FC = () => {
             レシピアプリへようこそ
           </Typography>
           <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', fontWeight: 500 }}>
-            アプリを使用するにはログインしてください
+            ユーザー情報を入力してください
           </Typography>
-          {error && <Alert severity="error" sx={{ mb: 2, textAlign: 'left' }}>{error}</Alert>}
-
-          <Button
-            variant="contained"
-            startIcon={<GoogleIcon />}
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            fullWidth
-            sx={{
-              mb: 2,
-              background: '#fff',
-              color: '#4285F4',
-              border: '1px solid #4285F4',
-              fontWeight: 700,
-              fontSize: '1.1rem',
-              boxShadow: '0 2px 8px rgba(66,133,244,0.08)',
-              '&:hover': { background: '#f1faff', borderColor: '#4285F4' },
-            }}
-          >
-            Googleでログイン
-          </Button>
-
-          <Box component="form" onSubmit={handleEmailLogin} sx={{ mb: 2 }}>
+          {error && (
+            <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
+          )}
+          <Box component="form" onSubmit={handleSubmit}>
             <TextField
-              label="メールアドレス"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              label="ユーザー名"
+              value={name}
+              onChange={e => setName(e.target.value)}
               fullWidth
               margin="normal"
-              autoComplete="email"
-              disabled={loading}
+              autoFocus
               sx={{ background: '#fff', borderRadius: 2 }}
             />
             <TextField
-              label="パスワード"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
+              label="所属店舗"
+              value={store}
+              onChange={e => setStore(e.target.value)}
               fullWidth
               margin="normal"
-              autoComplete="current-password"
-              disabled={loading}
               sx={{ background: '#fff', borderRadius: 2 }}
             />
             <Button
               type="submit"
               variant="contained"
+              color="primary"
               fullWidth
-              disabled={loading}
-              sx={{
-                mt: 2,
-                mb: 2,
-                background: 'linear-gradient(90deg, #42a5f5 0%, #1976d2 100%)',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '1.05rem',
-                boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
-                '&:hover': { background: 'linear-gradient(90deg, #1976d2 0%, #42a5f5 100%)' },
-              }}
+              sx={{ mt: 3, fontWeight: 700, fontSize: '1.1rem' }}
             >
-              メールアドレスでログイン
+              保存してはじめる
             </Button>
           </Box>
-
-          <Button
-            variant="outlined"
-            size="large"
-            onClick={handleAnonymousLogin}
-            disabled={loading}
-            fullWidth
-            sx={{
-              borderColor: '#ff9800',
-              color: '#ff9800',
-              fontWeight: 700,
-              fontSize: '1.05rem',
-              borderRadius: 2,
-              '&:hover': { background: '#fff3e0', borderColor: '#ff9800' },
-            }}
-          >
-            ゲストとしてログイン
-          </Button>
-
-          <Button
-            variant="outlined"
-            fullWidth
-            startIcon={<EmojiEventsIcon sx={{ color: '#FFD600' }} />}
-            sx={{
-              mt: 3,
-              mb: 1,
-              fontWeight: 700,
-              borderRadius: 2,
-              borderColor: '#FFD600',
-              color: '#FFD600',
-              '&:hover': {
-                background: '#FFFDE7',
-                borderColor: '#FFD600',
-                color: '#FFD600',
-              },
-            }}
-            onClick={handleOpenMasterDialog}
-          >
-            マスターとしてログイン
-          </Button>
-
-          {loading && (
-            <CircularProgress
-              size={32}
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                marginTop: '-16px',
-                marginLeft: '-16px',
-              }}
-            />
-          )}
         </Paper>
       </Container>
-      <Dialog open={masterDialogOpen} onClose={handleCloseMasterDialog}>
-        <DialogTitle>マスター認証</DialogTitle>
-        <DialogContent>
-          <Input
-            type="password"
-            placeholder="シークレット番号を入力"
-            value={secretCode}
-            onChange={e => setSecretCode(e.target.value)}
-            fullWidth
-            autoFocus
-            sx={{ my: 2 }}
-          />
-          {masterError && <Alert severity="error" sx={{ mt: 1 }}>{masterError}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseMasterDialog}>キャンセル</Button>
-          <Button onClick={handleMasterLogin} variant="contained">認証</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

@@ -77,19 +77,19 @@ const MyPage = () => {
   const { recipes, loading: recipesLoading } = recipeContext;
 
   const [tabValue, setTabValue] = useState(0);
-  const [displayName, setDisplayName] = useState(user?.displayName || "");
+  const [name, setName] = useState(user?.name || "");
   const [store, setStore] = useState(user?.store || "");
 
   useEffect(() => {
     if (user) {
-      setDisplayName(user.displayName || "");
+      setName(user.name || "");
       setStore(user.store || "");
     }
   }, [user]);
 
   const myRecipes = useMemo(() => {
     if (!user) return [];
-    return recipes.filter((recipe) => recipe.createdById === user.id);
+    return recipes.filter((recipe) => recipe.createdBy?.name === user.name && recipe.createdBy?.store === user.store);
   }, [recipes, user]);
 
   // usePaginationを利用（作成レシピ）
@@ -115,24 +115,22 @@ const MyPage = () => {
   const handleProfileUpdate = async () => {
     if (!user) return;
     try {
-      await updateUserProfile({ displayName, store });
+      await updateUserProfile({ name, store });
       pushAction({
         type: 'profile-edit',
         payload: {
-          userId: user.id,
-          newDisplayName: displayName,
+          newName: name,
           newStore: store
         },
         undo: async () => {},
         redo: async () => {},
-        description: `プロフィールを編集: ${displayName}（${store}）`,
+        description: `プロフィールを編集: ${name}（${store}）`,
       });
       if (settings.notifications.recipeEdited && user) {
-        showNotification(`${user.store || '未所属'}の${user.displayName || '名無しさん'}さんがプロフィールを編集しました`, 'success', {
+        showNotification(`${store || '未所属'}の${name || '名無しさん'}さんがプロフィールを編集しました`, 'success', {
           action: 'profile_edit',
-          userId: user.id,
-          userName: user.displayName,
-          userStore: user.store
+          userName: name,
+          userStore: store
         });
       }
       alert("プロフィールを更新しました");
@@ -276,7 +274,7 @@ const MyPage = () => {
            action.type}
         </Typography>
         <Typography variant="body2" sx={{ flexGrow: 1, ml: 1 }}>
-          {action.payload?.recipeTitle || action.payload?.newDisplayName || action.payload?.type || '-'}
+          {action.payload?.recipeTitle || action.payload?.newName || action.payload?.type || '-'}
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ minWidth: 120, textAlign: 'right', mr: 2 }}>
           {action.timestamp ? new Date(action.timestamp).toLocaleString('ja-JP') : ''}
@@ -366,8 +364,8 @@ const MyPage = () => {
             <TextField
               label="名前"
               fullWidth
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               sx={{ mb: 2 }}
             />
             <TextField
