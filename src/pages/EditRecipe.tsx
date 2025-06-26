@@ -65,11 +65,10 @@ const EditRecipe: React.FC = () => {
     const targetRecipe = recipes.find(r => r.id === id);
 
     if (targetRecipe) {
-      const isAuthor = user && targetRecipe.createdById === user.id;
+      const isAuthor = user && targetRecipe.createdBy.name === user.name && targetRecipe.createdBy.store === user.store;
       const isSameStore = user && targetRecipe.createdBy?.store && user.store && targetRecipe.createdBy.store === user.store;
-      const isMaster = user && user.role === 'master';
       
-      if (!isAuthor && !isSameStore && !isMaster) {
+      if (!isAuthor && !isSameStore) {
         setError("このレシピを編集する権限がありません。");
         setIsLoading(false);
         return;
@@ -173,7 +172,7 @@ const EditRecipe: React.FC = () => {
       const uploadedSteps = await Promise.all(
         steps.map(async (step, idx) => {
           if (step.file) {
-            const imageUrl = await uploadImage(step.file, `recipes/${user.id}/steps/${uuidv4()}`);
+            const imageUrl = await uploadImage(step.file, `recipes/${user.name}/steps/${uuidv4()}`);
             return { description: step.description || '', imageUrl };
           }
           return { description: step.description || '', imageUrl: step.imageUrl || (recipe.steps[idx]?.imageUrl || '') };
@@ -208,7 +207,6 @@ const EditRecipe: React.FC = () => {
           action: 'recipe_edit',
           recipeId: id,
           recipeTitle: title,
-          userId: user.id,
           userName: user.name,
           userStore: user.store
         });

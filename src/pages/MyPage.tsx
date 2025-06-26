@@ -163,7 +163,7 @@ const MyPage = () => {
       });
       const data = await res.json();
       if (data.secure_url) {
-        await updateUserProfile({ photoURL: data.secure_url });
+        await updateUserProfile({ name, store });
         setPreviewUrl(data.secure_url);
         setSelectedImage(null);
         alert('プロフィール画像を更新しました');

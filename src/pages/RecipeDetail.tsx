@@ -72,7 +72,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onReply, isReply = f
         </Typography>
       )}
       <Box sx={{ display: 'flex', gap: 2 }}>
-        <Avatar src={comment.createdBy.photoURL} sx={{ bgcolor: '#f5f5f5', color: '#888' }} />
+        <Avatar>{comment.createdBy.name[0]}</Avatar>
         <Box sx={{ flexGrow: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
             <Typography variant="subtitle2">{comment.createdBy.name}</Typography>
@@ -193,22 +193,19 @@ function RecipeDetail() {
     return <Typography sx={{textAlign: 'center', mt: 4, color: 'error.main'}}>{error}</Typography>;
   }
 
-  const isAuthor = user && recipe.createdById === user.id;
+  const isAuthor = user && recipe.createdBy.name === user.name && recipe.createdBy.store === user.store;
   const isSameStore = user && recipe.createdBy?.store && user.store && recipe.createdBy.store === user.store;
-  const isMaster = user?.role === 'master';
-  const canEdit = isAuthor || isSameStore || isMaster;
+  const canEdit = isAuthor || isSameStore;
 
-  const hasLiked = user?.id ? recipe.likes.some(like => like.userId === user.id) : false;
+  const hasLiked = user ? recipe.likes.some(like => like.userName === user.name) : false;
 
   const handleLike = () => {
     if (!id || !user) return;
     const recipeObj = recipes.find(r => r.id === id);
     if (!recipeObj) return;
-    const alreadyLiked = recipeObj.likes.some(like => like.userId === user.id);
+    const alreadyLiked = recipeObj.likes.some(like => like.userName === user.name);
     if (toggleLike) toggleLike(id, {
-      userId: "",
       userName: user.name,
-      userPhotoURL: user.photoURL
     });
     // 通知
     if (settings.notifications.recipeLiked && user) {
@@ -234,17 +231,13 @@ function RecipeDetail() {
       },
       undo: async () => {
         if (toggleLike) toggleLike(id, {
-          userId: "",
           userName: user.name,
-          userPhotoURL: user.photoURL
         });
         setStatus('like', '完了');
       },
       redo: async () => {
         if (toggleLike) toggleLike(id, {
-          userId: "",
           userName: user.name,
-          userPhotoURL: user.photoURL
         });
       },
       description: `いいねを${alreadyLiked ? '解除' : '追加'}`,
@@ -256,10 +249,9 @@ function RecipeDetail() {
     
     const newComment: Omit<Comment, 'id' | 'createdAt'> = {
       text: text.trim(),
-      userId: "",
       createdBy: {
         name: user.name,
-        photoURL: user.photoURL,
+        store: user.store,
       },
     };
 
@@ -483,7 +475,7 @@ function RecipeDetail() {
             </IconButton>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2}}>
-            <Avatar src={recipe.createdBy.photoURL} sx={{ bgcolor: '#f5f5f5', color: '#888' }} />
+            <Avatar>{recipe.createdBy.name[0]}</Avatar>
             <Box>
               <Typography variant="subtitle1">
                 {recipe.createdBy.name}
@@ -573,9 +565,9 @@ function RecipeDetail() {
             >
               {likes.length > 0 ? (
                 likes.map((like: any) => (
-                  <MenuItem key={like.userId} onClick={() => setLikesAnchorEl(null)}>
+                  <MenuItem key={like.userName} onClick={() => setLikesAnchorEl(null)}>
                     <ListItemIcon>
-                      <Avatar src={like.userPhotoURL} sx={{ width: 24, height: 24 }} />
+                      <Avatar>{like.userName[0]}</Avatar>
                     </ListItemIcon>
                     <ListItemText primary={like.userName} />
                   </MenuItem>
@@ -593,7 +585,7 @@ function RecipeDetail() {
           <Typography variant="h6" gutterBottom>コメント ({recipe.comments.length})</Typography>
           {user && (
               <Box sx={{ display: 'flex', gap: 2, mb: 2}}>
-                  <Avatar src={user.photoURL} sx={{ bgcolor: '#f5f5f5', color: '#888' }} />
+                  <Avatar>{user.name[0]}</Avatar>
                   <TextField 
                       fullWidth 
                       variant='outlined' 
@@ -719,7 +711,7 @@ function RecipeDetail() {
                     <Button variant="outlined" size="small" onClick={()=>{setSnapshotRecipe(h.snapshot);setSnapshotOpen(true);}}>この状態のレシピを見る</Button>
                     <Button variant="outlined" size="small" color="secondary" onClick={async () => {
                       if (!recipeContext || !id) return;
-                      await recipeContext.updateRecipe(id, h.snapshot, user ? { name: user.name, store: user.store, userId: "" } : undefined, 'ロールバック');
+                      await recipeContext.updateRecipe(id, h.snapshot, user ? { name: user.name, store: user.store } : undefined, 'ロールバック');
                       setHistoryOpen(false);
                     }}>この状態に戻す</Button>
                   </Box>

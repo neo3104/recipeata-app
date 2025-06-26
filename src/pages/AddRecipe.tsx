@@ -219,7 +219,6 @@ const AddRecipe: React.FC = () => {
         showNotification(`${user.store || '未所属'}の${user.name || '名無しさん'}さんが「${title}」を追加しました`, 'success', {
           action: 'recipe_add',
           recipeTitle: title,
-          userId: user.id,
           userName: user.name,
           userStore: user.store
         });

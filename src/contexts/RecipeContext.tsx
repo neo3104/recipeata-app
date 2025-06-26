@@ -43,11 +43,11 @@ interface RecipeContextType {
   loading: boolean;
   error: string | null;
   addRecipe: (recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt' | 'likes' | 'comments'>) => Promise<string>;
-  updateRecipe: (id: string, recipeData: Partial<Recipe>, editor?: { name: string; store: string; userId: string }, diff?: string) => Promise<void>;
+  updateRecipe: (id: string, recipeData: Partial<Recipe>, editor?: { name: string; store: string }, diff?: string) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
   restoreRecipe: (recipe: Recipe) => Promise<void>;
   getRecipeById: (id: string) => Recipe | undefined;
-  toggleLike: (recipeId: string, user: { userId: string, userName: string, userPhotoURL?: string }) => Promise<void>;
+  toggleLike: (recipeId: string, user: { userName: string }) => Promise<void>;
   addComment: (recipeId: string, comment: Omit<Comment, 'id' | 'createdAt'>, parentId?: string) => Promise<void>;
   deleteComment: (recipeId: string, commentId: string, parentId?: string) => Promise<void>;
 }
@@ -230,7 +230,7 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
   const updateRecipe = async (
     id: string,
     recipeUpdate: Partial<Recipe>,
-    editor?: { name: string; store: string; userId: string },
+    editor?: { name: string; store: string },
     diff?: string
   ): Promise<void> => {
     const originalRecipe = recipes.find(r => r.id === id);
@@ -252,7 +252,7 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
       // 履歴エントリを作成
       const historyEntry = removeUndefinedDeep({
         editedAt: Timestamp.now(),
-        editedBy: editor || { name: '', store: '', userId: '' },
+        editedBy: editor || { name: '', store: '' },
         diff: diff || autoDiff,
         snapshot: { ...originalRecipe },
       });
@@ -333,8 +333,8 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const toggleLike = async (recipeId: string, user: { userId: string, userName: string, userPhotoURL?: string }) => {
-    if (!user?.userId) {
+  const toggleLike = async (recipeId: string, user: { userName: string }) => {
+    if (!user?.userName) {
       console.error("User is not authenticated. Cannot like.");
       return;
     }
@@ -343,19 +343,17 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
     if (!currentRecipe) return;
 
     const likeData: Like = {
-      userId: user.userId ?? '',
-      userName: user.userName ?? '',
-      userPhotoURL: user.userPhotoURL ?? '',
+      userName: user.userName,
     };
 
-    const isLiked = currentRecipe.likes.some(like => like.userId === user.userId);
+    const isLiked = currentRecipe.likes.some(like => like.userName === user.userName);
 
     const updateData = {
       updatedAt: serverTimestamp()
     };
 
     if (isLiked) {
-      const existingLike = currentRecipe.likes.find(like => like.userId === user.userId);
+      const existingLike = currentRecipe.likes.find(like => like.userName === user.userName);
       await updateDoc(recipeRef, {
         ...updateData,
         likes: arrayRemove(existingLike)
@@ -371,7 +369,7 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
       prevRecipes.map(recipe => {
         if (recipe.id === recipeId) {
           const newLikes = isLiked
-            ? recipe.likes.filter(like => like.userId !== user.userId)
+            ? recipe.likes.filter(like => like.userName !== user.userName)
             : [...recipe.likes, likeData];
           return { ...recipe, likes: newLikes };
         }
@@ -404,7 +402,6 @@ export const RecipeProvider = ({ children }: { children: ReactNode }) => {
       ...comment,
       createdBy: {
         name: comment.createdBy.name ?? '',
-        photoURL: comment.createdBy.photoURL ?? '',
         store: user.store ?? '',
       },
       createdAt: new Date(),

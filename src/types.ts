@@ -39,7 +39,7 @@ export interface Recipe {
   subImages: { url: string; caption: string }[];
   ingredients: { name: string; quantity: string }[];
   steps: RecipeStep[];
-  createdById: string;
+  createdById?: string;
   createdBy: {
     name: string;
     photoURL?: string;
