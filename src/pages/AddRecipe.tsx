@@ -175,10 +175,8 @@ const AddRecipe: React.FC = () => {
         })),
         likes: [],
         comments: [],
-        createdById: user.id,
         createdBy: {
-          name: user.displayName || '名無しさん',
-          photoURL: user.photoURL || '',
+          name: user.name || '名無しさん',
           store: user.store || '',
         },
         subImages: [],
@@ -218,11 +216,11 @@ const AddRecipe: React.FC = () => {
       
       // 通知
       if (settings.notifications.recipeAdded) {
-        showNotification(`${user.store || '未所属'}の${user.displayName || '名無しさん'}さんが「${title}」を追加しました`, 'success', {
+        showNotification(`${user.store || '未所属'}の${user.name || '名無しさん'}さんが「${title}」を追加しました`, 'success', {
           action: 'recipe_add',
           recipeTitle: title,
           userId: user.id,
-          userName: user.displayName,
+          userName: user.name,
           userStore: user.store
         });
       }

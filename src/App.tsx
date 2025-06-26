@@ -9,11 +9,10 @@ import { UndoRedoProvider } from './contexts/UndoRedoContext';
 import { UndoRedoProgressProvider } from './contexts/UndoRedoProgressContext';
 
 function AppContent() {
-  const { user } = useUser();
-  
+  // const { user } = useUser();
   return (
-    <PinProvider userId={user?.id || null}>
-      <FavoriteProvider userId={user?.id || null}>
+    <PinProvider userId={null}>
+      <FavoriteProvider userId={null}>
         <Outlet />
       </FavoriteProvider>
     </PinProvider>

@@ -121,7 +121,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   color="inherit"
                   sx={{ color: '#4E342E' }}
                 >
-                  {user?.photoURL ? <Avatar src={user.photoURL} /> : <AccountCircle />}
+                  <AccountCircle />
                 </IconButton>
                 <Menu
                   id="menu-appbar"

@@ -206,7 +206,7 @@ function RecipeDetail() {
     if (!recipeObj) return;
     const alreadyLiked = recipeObj.likes.some(like => like.userId === user.id);
     if (toggleLike) toggleLike(id, {
-      userId: user.id,
+      userId: "",
       userName: user.name,
       userPhotoURL: user.photoURL
     });
@@ -216,7 +216,7 @@ function RecipeDetail() {
         action: 'like',
         recipeId: id,
         recipeTitle: recipeObj.title,
-        userId: user.id,
+        userId: "",
         userName: user.name,
         userStore: user.store,
         additionalInfo: { isLike: !alreadyLiked }
@@ -228,13 +228,13 @@ function RecipeDetail() {
       payload: {
         recipeId: id,
         recipeTitle: recipeObj.title,
-        userId: user.id,
+        userId: "",
         userName: user.name,
         action: alreadyLiked ? 'unlike' : 'like'
       },
       undo: async () => {
         if (toggleLike) toggleLike(id, {
-          userId: user.id,
+          userId: "",
           userName: user.name,
           userPhotoURL: user.photoURL
         });
@@ -242,7 +242,7 @@ function RecipeDetail() {
       },
       redo: async () => {
         if (toggleLike) toggleLike(id, {
-          userId: user.id,
+          userId: "",
           userName: user.name,
           userPhotoURL: user.photoURL
         });
@@ -256,7 +256,7 @@ function RecipeDetail() {
     
     const newComment: Omit<Comment, 'id' | 'createdAt'> = {
       text: text.trim(),
-      userId: user.id,
+      userId: "",
       createdBy: {
         name: user.name,
         photoURL: user.photoURL,
@@ -275,7 +275,7 @@ function RecipeDetail() {
         recipeId: id,
         recipeTitle: recipe.title,
         commentText: text,
-        userId: user.id,
+        userId: "",
         userName: user.name,
         userStore: user.store
       });
@@ -332,7 +332,7 @@ function RecipeDetail() {
                 action: 'recipe_delete',
                 recipeId: id,
                 recipeTitle: recipe.title,
-                userId: user.id,
+                userId: "",
                 userName: user.name,
                 userStore: user.store
               });
@@ -719,7 +719,7 @@ function RecipeDetail() {
                     <Button variant="outlined" size="small" onClick={()=>{setSnapshotRecipe(h.snapshot);setSnapshotOpen(true);}}>この状態のレシピを見る</Button>
                     <Button variant="outlined" size="small" color="secondary" onClick={async () => {
                       if (!recipeContext || !id) return;
-                      await recipeContext.updateRecipe(id, h.snapshot, user ? { name: user.name, store: user.store, userId: user.id } : undefined, 'ロールバック');
+                      await recipeContext.updateRecipe(id, h.snapshot, user ? { name: user.name, store: user.store, userId: "" } : undefined, 'ロールバック');
                       setHistoryOpen(false);
                     }}>この状態に戻す</Button>
                   </Box>
